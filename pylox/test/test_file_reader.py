@@ -1,4 +1,4 @@
-from pylox.utils.file_reader import read_as_string
+from utils.file_reader import read_as_string
 import os
 
 TEST_FILE_NAME = "test_file.txt"

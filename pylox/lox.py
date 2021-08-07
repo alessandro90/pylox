@@ -1,22 +1,30 @@
-from scanner import Scanner
+from scanner import Scanner, Source
 from utils.file_reader import read_as_string
+from utils.error_handler import ErrorInfo
+from typing import Optional
+import sys
 
-EXIT_COMMAND = "exit()"
+_EXIT_COMMAND = "exit()"
 
 
-class PyLox:
-    def __init__(self) -> None:
-        self._scanner = Scanner()
+def run_file(script: str) -> None:
+    if (err := _run(read_as_string(script))) is not None:
+        err.display()
+        sys.exit(65)
 
-    def run_file(self, script: str) -> None:
-        self._run(read_as_string(script))
 
-    def run_prompt(self) -> None:
-        try:
-            while (command := input("> ")) != EXIT_COMMAND:
-                self._run(command)
-        except EOFError:
-            pass
-
-    def _run(self, string: str) -> None:
+def run_prompt() -> None:
+    try:
+        while (command := input("> ")) != _EXIT_COMMAND:
+            if (err := _run(command)) is not None:
+                err.display()
+    except (EOFError, KeyboardInterrupt):
         pass
+
+
+def _run(source: str) -> Optional[ErrorInfo]:
+    scanner = Scanner(Source(source))
+    tokens = scanner.scan_tokens()
+    for (i, t) in enumerate(tokens):
+        print(f"{i} => {t}")
+    return scanner.error_info()

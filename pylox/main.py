@@ -1,5 +1,5 @@
 import sys
-from lox import PyLox
+from lox import run_file, run_prompt
 import logging
 
 
@@ -8,13 +8,13 @@ def main(args: list[str]) -> None:
 
     logging.basicConfig(level=logging.DEBUG)
 
-    pylox = PyLox()
     if len(args) == 1:
         logging.debug("run_prompt")
-        pylox.run_prompt()
+        run_prompt()
     elif len(args) == 2:
-        logging.debug(f"run_file {args[1]}")
-        pylox.run_file(args[1])
+        (_, script) = args
+        logging.debug(f"run_file {script}")
+        run_file(script)
     else:
         print("Usage: python main.py [script]")
         sys.exit(64)
