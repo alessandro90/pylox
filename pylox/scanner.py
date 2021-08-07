@@ -1,12 +1,9 @@
 from __future__ import annotations  # TODO: No need since python 3.10+
-from typing import Any, Callable, Iterable, Optional, TypeVar
+from typing import Any, Iterable, Optional
 from enum import Enum, auto
 from dataclasses import dataclass
 from utils.error_handler import ErrorData, ErrorInfo
-
-# Generics types
-T = TypeVar("T")
-Q = TypeVar("Q")
+from utils.functional import try_invoke
 
 
 class TokenType(Enum):
@@ -259,12 +256,3 @@ class Scanner:
             ErrorData(self._source.line(), None, f"Unexpected character: {c}")
         )
         return None
-
-
-def try_invoke(
-    val: Optional[T], callable: Callable[[T], Q], default: Optional[Q] = None
-) -> Optional[Q]:
-    """Return callable(var) if var is not None, otherwise return default"""
-    if val is None:
-        return default
-    return callable(val)
