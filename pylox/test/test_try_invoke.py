@@ -1,19 +1,19 @@
-from utils.functional import try_invoke
+from utils.functional import try_invoke, try_invoke_bool
 
 
 def test_try_invoke_on_value():
-    val = "10"
-    assert try_invoke(val, lambda x: x.isdigit())
-
-
-def test_try_invoke_on_none():
-    assert try_invoke(None, lambda _: True) is None
-
-
-def test_try_invoke_on_value_with_default():
     val = 15
-    assert not try_invoke(val, lambda x: isinstance(x, str), True)
+    assert try_invoke(val, lambda x: isinstance(x, str), True) is False
 
 
-def test_try_invoke_on_None_with_default():
-    assert not try_invoke(None, lambda x: x.isdigit(), False)
+def test_try_invoke_on_None():
+    assert try_invoke(None, lambda x: x.isdigit(), False) is False
+
+
+def test_try_invoke_bool_with_value():
+    val = 10
+    assert try_invoke_bool(val, lambda x: x % 2 == 0) is True
+
+
+def test_try_invoke_bool_with_None():
+    assert try_invoke_bool(None, lambda x: x % 2 == 0) is False
