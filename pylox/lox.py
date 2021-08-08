@@ -1,4 +1,4 @@
-from scanner import Scanner, Source
+from scanner import Scanner, Source, TOKEN_FINDERS
 from utils.file_reader import read_as_string
 from utils.error_handler import ErrorInfo
 from typing import Optional
@@ -23,7 +23,7 @@ def run_prompt() -> None:
 
 
 def _run(source: str) -> Optional[ErrorInfo]:
-    scanner = Scanner(Source(source))
+    scanner = Scanner(Source(source), TOKEN_FINDERS)
     tokens = scanner.scan_tokens()
     for (i, t) in enumerate(tokens):
         print(f"{i} => {t}")

@@ -1,0 +1,2 @@
+class InternalPyloxError(Exception):
+    pass

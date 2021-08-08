@@ -12,7 +12,7 @@ def main(args: list[str]) -> None:
         logging.debug("run_prompt")
         run_prompt()
     elif len(args) == 2:
-        (_, script) = args
+        _, script = args
         logging.debug(f"run_file {script}")
         run_file(script)
     else:

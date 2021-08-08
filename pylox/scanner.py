@@ -1,5 +1,6 @@
-from __future__ import annotations  # TODO: No need since python 3.10+
-from typing import Any, Iterable, Optional
+from __future__ import annotations  # NOTE: No need since python 3.10+
+from exceptions import InternalPyloxError
+from typing import Any, Callable, Iterable, Optional, Union
 from enum import Enum, auto
 from dataclasses import dataclass
 from utils.error_handler import ErrorData, ErrorInfo
@@ -56,6 +57,26 @@ class TokenType(Enum):
     EOF = auto()
 
 
+RESERVED_KEYWORDS = {
+    "and": TokenType.AND,
+    "class": TokenType.CLASS,
+    "else": TokenType.ELSE,
+    "false": TokenType.FALSE,
+    "for": TokenType.FOR,
+    "fun": TokenType.FUN,
+    "if": TokenType.IF,
+    "nil": TokenType.NIL,
+    "or": TokenType.OR,
+    "print": TokenType.PRINT,
+    "return": TokenType.RETURN,
+    "super": TokenType.SUPER,
+    "this": TokenType.THIS,
+    "true": TokenType.TRUE,
+    "var": TokenType.VAR,
+    "while": TokenType.WHILE,
+}
+
+
 class Source:
     """Helper class to manage a source file (or repl command)"""
 
@@ -89,7 +110,7 @@ class Source:
         return c
 
     def peek(self, depth: int = 0) -> Optional[str]:
-        """Returns next character, if any"""
+        """Returns next + detph character, if any, otherwise return None"""
         if self._current + depth >= self._source_len:
             return None
         return self._source[self._current + depth]
@@ -134,9 +155,175 @@ class Token:
         )
 
 
+sentinel_token_not_found = object()  # Sentinel object
+TokenFinderResult = Optional[Union[Token, ErrorData, object]]
+
+
+@dataclass(frozen=True, eq=False)
+class TokenMatch:
+    """Wrapper to a result from a token_finder_* method"""
+
+    result: TokenFinderResult
+
+    @classmethod
+    def none(cls) -> TokenMatch:
+        return cls(result=sentinel_token_not_found)
+
+    @classmethod
+    def found(cls, res: Optional[Token] = None) -> TokenMatch:
+        return cls(result=res)
+
+    @classmethod
+    def error(cls, err: ErrorData) -> TokenMatch:
+        return cls(result=err)
+
+
+def token_finder_single_char_factory(
+    char: str, token_type: TokenType
+) -> Callable[[str, Source], TokenMatch]:
+    def token_finder_single_char(c: str, source: Source) -> TokenMatch:
+        if c != char:
+            return TokenMatch.none()
+        return TokenMatch.found(Token.make(source, token_type))
+
+    return token_finder_single_char
+
+
+def token_finder_disambiguate_two_chars_factory(
+    char: str, next_char: str, token_type: TokenType, next_token_type: TokenType
+) -> Callable[[str, Source], TokenMatch]:
+    def token_finder_disambiguate(c: str, source: Source) -> TokenMatch:
+        if c == char:
+            if source.consume_next_if_is(next_char):
+                return TokenMatch.found(Token.make(source, next_token_type))
+            else:
+                return TokenMatch.found(Token.make(source, token_type))
+        else:
+            return TokenMatch.none()
+
+    return token_finder_disambiguate
+
+
+def token_finder_comment(c: str, source: Source) -> TokenMatch:
+    if c != "/":
+        return TokenMatch.none()
+    if source.consume_next_if_is("/"):
+        while try_invoke(source.peek(), lambda x: x != "\n"):
+            source.advance()
+        return TokenMatch.found()
+    else:
+        return TokenMatch.found(Token.make(source, TokenType.SLASH))
+
+
+def token_finder_discard(c: str, source: Source) -> TokenMatch:
+
+    should_discard = lambda x: any((x == " ", x == "\r", x == "\t"))
+    if should_discard(c):
+        while try_invoke(source.peek(), should_discard):
+            source.advance()
+        return TokenMatch.found()
+    return TokenMatch.none()
+
+
+def token_finder_newline(c: str, source: Source) -> TokenMatch:
+    if c == "\n":
+        source.newline()
+        return TokenMatch.found()
+    return TokenMatch.none()
+
+
+def token_finder_string(c: str, source: Source) -> TokenMatch:
+    if c != '"':
+        return TokenMatch.none()
+
+    while try_invoke(char := source.peek(), lambda x: x != '"'):
+        if char == "\n":
+            source.newline()
+        source.advance()
+    if source.is_at_end():
+        return TokenMatch.error(
+            ErrorData(source.line(), None, "Untermined string")
+        )
+    else:
+        source.advance()
+        return TokenMatch.found(
+            Token.make(source, TokenType.STRING, source.lexeme()[1:-1])
+        )
+
+
+def token_finder_number(c: str, source: Source) -> TokenMatch:
+    if not c.isdigit():
+        return TokenMatch.none()
+
+    is_digit = lambda char: char.isdigit()
+
+    while try_invoke(source.peek(), is_digit):
+        source.advance()
+
+    if try_invoke(source.peek(), lambda char: char == ".") and try_invoke(
+        source.peek(1), is_digit
+    ):
+        source.advance()
+
+    while try_invoke(source.peek(), is_digit):
+        source.advance()
+
+    return TokenMatch.found(
+        Token.make(source, TokenType.NUMBER, float(source.lexeme()))
+    )
+
+
+def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
+    if not c.isalnum():
+        return TokenMatch.none()
+    while try_invoke(source.peek(), lambda x: x.isalnum()):
+        source.advance()
+    if (keyword := RESERVED_KEYWORDS.get(source.lexeme(), None)) is not None:
+        return TokenMatch.found(Token.make(source, keyword))
+    else:
+        return TokenMatch.found(Token.make(source, TokenType.IDENTIFIER))
+
+
+TOKEN_FINDERS = (
+    token_finder_single_char_factory("(", TokenType.LEFT_PAREN),
+    token_finder_single_char_factory(")", TokenType.RIGHT_PAREN),
+    token_finder_single_char_factory("{", TokenType.LEFT_BRACE),
+    token_finder_single_char_factory("}", TokenType.RIGHT_BRACE),
+    token_finder_single_char_factory(",", TokenType.COMMA),
+    token_finder_single_char_factory(".", TokenType.DOT),
+    token_finder_single_char_factory("-", TokenType.MINUS),
+    token_finder_single_char_factory("+", TokenType.PLUS),
+    token_finder_single_char_factory(";", TokenType.SEMICOLON),
+    token_finder_single_char_factory("*", TokenType.STAR),
+    token_finder_disambiguate_two_chars_factory(
+        "=", "=", TokenType.EQUAL, TokenType.EQUAL_EQUAL
+    ),
+    token_finder_disambiguate_two_chars_factory(
+        "!", "=", TokenType.BANG, TokenType.BANG_EQUAL
+    ),
+    token_finder_disambiguate_two_chars_factory(
+        ">", "=", TokenType.GREATER, TokenType.GREATER_EQUAL
+    ),
+    token_finder_disambiguate_two_chars_factory(
+        "<", "=", TokenType.LESS, TokenType.LESS_EQUAL
+    ),
+    token_finder_comment,
+    token_finder_discard,
+    token_finder_newline,
+    token_finder_string,
+    token_finder_number,
+    token_finder_keyword_or_identifier,
+)
+
+
 class Scanner:
-    def __init__(self, source: Source):
+    def __init__(
+        self,
+        source: Source,
+        token_finders: Iterable[Callable[[str, Source], TokenMatch]],
+    ):
         self._source = source
+        self._token_finders = token_finders
         self._error = ErrorInfo()
 
     def error_info(self) -> Optional[ErrorInfo]:
@@ -155,104 +342,24 @@ class Scanner:
 
         yield Token(TokenType.EOF, "", None, self._source.line())
 
-    def _recursion_if_not_eof(self) -> Optional[Token]:
-        """Return the result of _scan_token if source is not finished,
-        None otherwise"""
-        if not self._source.is_at_end():
-            return self._scan_token()
-        return None
-
     def _scan_token(self) -> Optional[Token]:
         """Produce a Token, or None if there is no match.
         Also update errors if detected"""
+
         c = self._source.advance()
-        if c == "(":
-            return Token.make(self._source, TokenType.LEFT_PAREN)
-        if c == ")":
-            return Token.make(self._source, TokenType.RIGHT_PAREN)
-        if c == "{":
-            return Token.make(self._source, TokenType.LEFT_BRACE)
-        if c == "}":
-            return Token.make(self._source, TokenType.RIGHT_BRACE)
-        if c == ",":
-            return Token.make(self._source, TokenType.COMMA)
-        if c == ".":
-            return Token.make(self._source, TokenType.DOT)
-        if c == "-":
-            return Token.make(self._source, TokenType.MINUS)
-        if c == "+":
-            return Token.make(self._source, TokenType.PLUS)
-        if c == ";":
-            return Token.make(self._source, TokenType.SEMICOLON)
-        if c == "*":
-            return Token.make(self._source, TokenType.STAR)
-        if c == "!":
-            if self._source.consume_next_if_is("="):
-                return Token.make(self._source, TokenType.BANG_EQUAL)
-            else:
-                return Token.make(self._source, TokenType.BANG)
-        if c == "=":
-            if self._source.consume_next_if_is("="):
-                return Token.make(self._source, TokenType.EQUAL_EQUAL)
-            else:
-                return Token.make(self._source, TokenType.EQUAL)
-        if c == "<":
-            if self._source.consume_next_if_is("="):
-                return Token.make(self._source, TokenType.LESS_EQUAL)
-            else:
-                return Token.make(self._source, TokenType.LESS)
-        if c == ">":
-            if self._source.consume_next_if_is("="):
-                return Token.make(self._source, TokenType.GREATER_EQUAL)
-            else:
-                return Token.make(self._source, TokenType.GREATER)
-        if c == "/":
-            if self._source.consume_next_if_is("/"):
-                while try_invoke(self._source.peek(), lambda x: x != "\n"):
-                    self._source.advance()
-                return self._recursion_if_not_eof()
-            else:
-                return Token.make(self._source, TokenType.SLASH)
-        if any((c == " ", c == "\r", c == "\t")):
-            return self._recursion_if_not_eof()
-        if c == "\n":
-            self._source.newline()
-            return None
-        if c == '"':
-            while try_invoke(char := self._source.peek(), lambda x: x != ""):
-                if char == "\n":
-                    self._source.newline()
-                self._source.advance()
-            if self._source.is_at_end():
-                self._error.push(
-                    ErrorData(self._source.line(), None, "Untermined string")
-                )
+
+        for finder in self._token_finders:
+            token_match = finder(c, self._source)
+            if token_match.result is sentinel_token_not_found:
+                continue
+            elif token_match.result is None or isinstance(
+                token_match.result, Token
+            ):
+                return token_match.result
+            elif isinstance(token_match.result, ErrorData):
+                self._error.push(token_match.result)
                 return None
-            else:
-                self._source.advance()
-                return Token.make(
-                    self._source, TokenType.STRING, self._source.lexeme()[1:-1]
-                )
-        if c.isdigit():
-
-            is_digit = lambda char: char.isdigit()  # noqa E731
-
-            while try_invoke(self._source.peek(), is_digit):
-                self._source.advance()
-
-            if try_invoke(
-                self._source.peek(), lambda char: char == "."
-            ) and try_invoke(self._source.peek(1), is_digit):
-                self._source.advance()
-
-            while try_invoke(self._source.peek(), is_digit):
-                self._source.advance()
-
-            return Token.make(
-                self._source, TokenType.NUMBER, float(self._source.lexeme())
-            )
-
-        self._error.push(
-            ErrorData(self._source.line(), None, f"Unexpected character: {c}")
+        raise InternalPyloxError(
+            "Unexpected internal error. "
+            f"class: {self.__class__.__name__}, file: {__file__}"
         )
-        return None
