@@ -3,7 +3,7 @@ from typing import Any, Callable, Iterable, Optional, Union
 from enum import Enum, auto
 from dataclasses import dataclass
 from utils.error_handler import ErrorData, ErrorInfo
-from utils.functional import try_invoke_bool
+from utils.functional import opt_map_or_false
 
 
 class TokenType(Enum):
@@ -156,7 +156,7 @@ class Token:
         )
 
 
-sentinel_token_not_found = object()  # Sentinel object
+SENTINEL_TOKEN_NOT_FOUND = object()  # Sentinel object
 TokenFinderResult = Optional[Union[Token, ErrorData, object]]
 
 
@@ -168,7 +168,7 @@ class TokenMatch:
 
     @classmethod
     def none(cls) -> TokenMatch:
-        return cls(result=sentinel_token_not_found)
+        return cls(result=SENTINEL_TOKEN_NOT_FOUND)
 
     @classmethod
     def found(cls, res: Optional[Token] = None) -> TokenMatch:
@@ -190,7 +190,7 @@ def token_finder_single_char_factory(
     return token_finder_single_char
 
 
-def token_finder_disambiguate_two_chars_factory(
+def token_finder_disambiguate_factory(
     char: str, next_char: str, token_type: TokenType, next_token_type: TokenType
 ) -> Callable[[str, Source], TokenMatch]:
     def token_finder_disambiguate(c: str, source: Source) -> TokenMatch:
@@ -209,7 +209,8 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
     if c != "/":
         return TokenMatch.none()
     if source.consume_next_if_is("/"):
-        while try_invoke_bool(source.peek(), lambda x: x != "\n"):
+        while opt_map_or_false(source.peek(), lambda x: x != "\n"):
+            print(source.peek())
             source.advance()
         return TokenMatch.found()
     elif source.consume_next_if_is("*"):
@@ -223,7 +224,7 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
 
             if char == "\n":
                 source.newline()
-            elif char == "*" and try_invoke_bool(
+            elif char == "*" and opt_map_or_false(
                 source.peek(), lambda x: x == "/"
             ):
                 source.advance()
@@ -232,14 +233,19 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
         return TokenMatch.found(Token.make(source, TokenType.SLASH))
 
 
-def token_finder_discard(c: str, source: Source) -> TokenMatch:
+def token_finder_discard_factory(
+    *to_discard: str,
+) -> Callable[[str, Source], TokenMatch]:
+    should_discard = lambda x: any(x == skip for skip in to_discard)
 
-    should_discard = lambda x: any((x == " ", x == "\r", x == "\t"))
-    if should_discard(c):
-        while try_invoke_bool(source.peek(), should_discard):
-            source.advance()
-        return TokenMatch.found()
-    return TokenMatch.none()
+    def token_finder_discard(c: str, source: Source) -> TokenMatch:
+        if should_discard(c):
+            while opt_map_or_false(source.peek(), should_discard):
+                source.advance()
+            return TokenMatch.found()
+        return TokenMatch.none()
+
+    return token_finder_discard
 
 
 def token_finder_newline(c: str, source: Source) -> TokenMatch:
@@ -253,8 +259,10 @@ def token_finder_string(c: str, source: Source) -> TokenMatch:
     if c != '"':
         return TokenMatch.none()
 
-    while try_invoke_bool(char := source.peek(), lambda x: x != '"'):
+    while opt_map_or_false(char := source.peek(), lambda x: x != '"'):
+        print(f"into while {repr(char)}")
         if char == "\n":
+            print("newline")
             source.newline()
         source.advance()
     if source.is_at_end():
@@ -274,15 +282,15 @@ def token_finder_number(c: str, source: Source) -> TokenMatch:
 
     is_digit = lambda char: char.isdigit()
 
-    while try_invoke_bool(source.peek(), is_digit):
+    while opt_map_or_false(source.peek(), is_digit):
         source.advance()
 
-    if try_invoke_bool(
+    if opt_map_or_false(
         source.peek(), lambda char: char == "."
-    ) and try_invoke_bool(source.peek(1), is_digit):
+    ) and opt_map_or_false(source.peek(1), is_digit):
         source.advance()
 
-    while try_invoke_bool(source.peek(), is_digit):
+    while opt_map_or_false(source.peek(), is_digit):
         source.advance()
 
     return TokenMatch.found(
@@ -293,7 +301,7 @@ def token_finder_number(c: str, source: Source) -> TokenMatch:
 def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
     if not c.isalnum():
         return TokenMatch.none()
-    while try_invoke_bool(source.peek(), lambda x: x.isalnum()):
+    while opt_map_or_false(source.peek(), lambda x: x.isalnum()):
         source.advance()
     if (keyword := RESERVED_KEYWORDS.get(source.lexeme(), None)) is not None:
         return TokenMatch.found(Token.make(source, keyword))
@@ -312,20 +320,20 @@ TOKEN_FINDERS: Iterable[Callable[[str, Source], TokenMatch]] = (
     token_finder_single_char_factory("+", TokenType.PLUS),
     token_finder_single_char_factory(";", TokenType.SEMICOLON),
     token_finder_single_char_factory("*", TokenType.STAR),
-    token_finder_disambiguate_two_chars_factory(
+    token_finder_disambiguate_factory(
         "=", "=", TokenType.EQUAL, TokenType.EQUAL_EQUAL
     ),
-    token_finder_disambiguate_two_chars_factory(
+    token_finder_disambiguate_factory(
         "!", "=", TokenType.BANG, TokenType.BANG_EQUAL
     ),
-    token_finder_disambiguate_two_chars_factory(
+    token_finder_disambiguate_factory(
         ">", "=", TokenType.GREATER, TokenType.GREATER_EQUAL
     ),
-    token_finder_disambiguate_two_chars_factory(
+    token_finder_disambiguate_factory(
         "<", "=", TokenType.LESS, TokenType.LESS_EQUAL
     ),
     token_finder_slash_or_comment,
-    token_finder_discard,
+    token_finder_discard_factory(" ", "\r", "\t"),
     token_finder_newline,
     token_finder_string,
     token_finder_number,
@@ -367,7 +375,7 @@ class Scanner:
 
         for finder in self._token_finders:
             token_match = finder(c, self._source)
-            if token_match.result is sentinel_token_not_found:
+            if token_match.result is SENTINEL_TOKEN_NOT_FOUND:
                 continue
             elif token_match.result is None or isinstance(
                 token_match.result, Token
