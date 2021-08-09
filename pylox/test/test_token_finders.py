@@ -177,7 +177,7 @@ def test_token_finder_find_number_decimal_found():
 
 
 def test_token_finder_keyword_or_identifier_not_found(a_source):
-    chars = ".,;-+*/{}()[]<>=!"
+    chars = ".,;-+*/{}()[]\n<>\t =!"
 
     for c in chars:
         assert (
@@ -196,7 +196,17 @@ def test_token_finder_keyword_or_identifier_keyword_found():
 
 
 def test_token_finder_keyword_or_identifier_identifier_found():
-    words = ["apple", "banana", "people", "wowoww"]
+    words = [
+        "apple",
+        "banana",
+        "people",
+        "wowoww",
+        "class_",
+        "_if_",
+        "vAr",
+        "my_var_4",
+        "_",
+    ]
     for word in words:
         source = s.Source(word)
         c = source.advance()

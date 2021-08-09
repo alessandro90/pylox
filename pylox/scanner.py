@@ -210,7 +210,6 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
         return TokenMatch.none()
     if source.consume_next_if_is("/"):
         while opt_map_or_false(source.peek(), lambda x: x != "\n"):
-            print(source.peek())
             source.advance()
         return TokenMatch.found()
     elif source.consume_next_if_is("*"):
@@ -220,9 +219,7 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
                     ErrorData(source.line(), None, "Untermined comment")
                 )
 
-            char = source.advance()
-
-            if char == "\n":
+            if (char := source.advance()) == "\n":
                 source.newline()
             elif char == "*" and opt_map_or_false(
                 source.peek(), lambda x: x == "/"
@@ -260,9 +257,7 @@ def token_finder_string(c: str, source: Source) -> TokenMatch:
         return TokenMatch.none()
 
     while opt_map_or_false(char := source.peek(), lambda x: x != '"'):
-        print(f"into while {repr(char)}")
         if char == "\n":
-            print("newline")
             source.newline()
         source.advance()
     if source.is_at_end():
@@ -299,9 +294,15 @@ def token_finder_number(c: str, source: Source) -> TokenMatch:
 
 
 def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
-    if not c.isalnum():
+    def is_alpha(char: str) -> bool:
+        return char.isalpha() or char == "_"
+
+    def is_alphanum(char: str) -> bool:
+        return is_alpha(char) or char.isdigit()
+
+    if not is_alpha(c):
         return TokenMatch.none()
-    while opt_map_or_false(source.peek(), lambda x: x.isalnum()):
+    while opt_map_or_false(source.peek(), lambda x: is_alphanum(x)):
         source.advance()
     if (keyword := RESERVED_KEYWORDS.get(source.lexeme(), None)) is not None:
         return TokenMatch.found(Token.make(source, keyword))
@@ -309,7 +310,10 @@ def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
         return TokenMatch.found(Token.make(source, TokenType.IDENTIFIER))
 
 
-TOKEN_FINDERS: Iterable[Callable[[str, Source], TokenMatch]] = (
+TokenFinder = Callable[[str, Source], TokenMatch]
+
+
+TOKEN_FINDERS: Iterable[TokenFinder] = (
     token_finder_single_char_factory("(", TokenType.LEFT_PAREN),
     token_finder_single_char_factory(")", TokenType.RIGHT_PAREN),
     token_finder_single_char_factory("{", TokenType.LEFT_BRACE),
@@ -345,7 +349,7 @@ class Scanner:
     def __init__(
         self,
         source: Source,
-        token_finders: Iterable[Callable[[str, Source], TokenMatch]],
+        token_finders: Iterable[TokenFinder],
     ):
         self._source = source
         self._token_finders = token_finders
