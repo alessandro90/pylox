@@ -3,7 +3,7 @@
 
 from __future__ import annotations  # NOTE: No need since python 3.10+
 from typing import Any, Protocol, TypeVar
-from scanner import Token
+from token import Token
 
 
 T_co = TypeVar("T_co", covariant=True)

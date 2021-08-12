@@ -1,4 +1,5 @@
-from scanner import Scanner, Source, TOKEN_FINDERS
+from scanner import Scanner, TOKEN_FINDERS
+from source import Source
 from utils.file_reader import read_as_string
 from utils.error_handler import ErrorInfo
 from typing import Optional

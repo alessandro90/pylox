@@ -1,5 +1,5 @@
 import pytest
-from scanner import Source
+from source import Source
 from string import ascii_letters, digits
 
 

@@ -43,7 +43,7 @@ NOTE = (
 IMPORTS = (
     "from __future__ import annotations  # NOTE: No need since python 3.10+\n"
     "from typing import Any, Protocol, TypeVar\n"
-    "from scanner import Token\n"
+    "from token import Token\n"
 )
 
 GEN_COVAR = "T_co"
@@ -132,4 +132,4 @@ def write_file(fname: str):
 
 
 if __name__ == "__main__":
-    write_file("../pylox/expr.py")
+    write_file(os.path.join(os.pardir, "pylox", "expr.py"))
