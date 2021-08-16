@@ -4,6 +4,8 @@ from utils.file_reader import read_as_string
 from utils.error_handler import ErrorInfo
 from typing import Optional
 import sys
+from pyloxparser import Parser
+from visitors import Stringyfier
 
 _EXIT_COMMAND = "exit()"
 
@@ -26,6 +28,11 @@ def run_prompt() -> None:
 def _run(source: str) -> Optional[ErrorInfo]:
     scanner = Scanner(Source(source), TOKEN_FINDERS)
     tokens = scanner.scan_tokens()
-    for (i, t) in enumerate(tokens):
-        print(f"{i} => {t}")
+
+    ast = Parser(tokens)
+    result = ast.parse()
+    s = Stringyfier()
+    print(s.stringify(result))
+    # for (i, t) in enumerate(tokens):
+    #     print(f"{i} => {t}")
     return scanner.error_info()

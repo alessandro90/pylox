@@ -1,6 +1,6 @@
 import scanner as s
 from source import Source
-from token import Token, TokenType
+from pyloxtoken import Token, TokenType
 import pytest
 from utils.error_handler import ErrorData
 

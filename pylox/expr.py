@@ -3,64 +3,53 @@
 
 from __future__ import annotations  # NOTE: No need since python 3.10+
 from typing import Any, Protocol, TypeVar
-from token import Token
+from pyloxtoken import Token
 
 
 T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
 
 
 class Visitor(Protocol[T_co]):
-    @staticmethod
-    def visitAssignExpr(expr: Assign) -> T_co:
+    def visitAssignExpr(self, expr: Assign) -> T_co:
         ...
 
-    @staticmethod
-    def visitBinaryExpr(expr: Binary) -> T_co:
+    def visitBinaryExpr(self, expr: Binary) -> T_co:
         ...
 
-    @staticmethod
-    def visitCallExpr(expr: Call) -> T_co:
+    def visitCallExpr(self, expr: Call) -> T_co:
         ...
 
-    @staticmethod
-    def visitGetExpr(expr: Get) -> T_co:
+    def visitGetExpr(self, expr: Get) -> T_co:
         ...
 
-    @staticmethod
-    def visitGroupingExpr(expr: Grouping) -> T_co:
+    def visitGroupingExpr(self, expr: Grouping) -> T_co:
         ...
 
-    @staticmethod
-    def visitLiteralExpr(expr: Literal) -> T_co:
+    def visitLiteralExpr(self, expr: Literal) -> T_co:
         ...
 
-    @staticmethod
-    def visitLogicalExpr(expr: Logical) -> T_co:
+    def visitLogicalExpr(self, expr: Logical) -> T_co:
         ...
 
-    @staticmethod
-    def visitSetExpr(expr: Set) -> T_co:
+    def visitSetExpr(self, expr: Set) -> T_co:
         ...
 
-    @staticmethod
-    def visitSuperExpr(expr: Super) -> T_co:
+    def visitSuperExpr(self, expr: Super) -> T_co:
         ...
 
-    @staticmethod
-    def visitThisExpr(expr: This) -> T_co:
+    def visitThisExpr(self, expr: This) -> T_co:
         ...
 
-    @staticmethod
-    def visitUnaryExpr(expr: Unary) -> T_co:
+    def visitUnaryExpr(self, expr: Unary) -> T_co:
         ...
 
-    @staticmethod
-    def visitVariableExpr(expr: Variable) -> T_co:
+    def visitVariableExpr(self, expr: Variable) -> T_co:
         ...
 
 
-class Expr(Protocol[T_co]):
-    def accept(visitor: Visitor[T_co]) -> T_co:
+class Expr(Protocol[T]):
+    def accept(self, visitor: Visitor[T]) -> T:
         ...
 
 
@@ -170,4 +159,3 @@ class Variable:
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
         return visitor.visitVariableExpr(self)
-

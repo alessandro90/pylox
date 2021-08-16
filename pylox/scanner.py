@@ -1,9 +1,9 @@
 from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, Union, Iterator
 from dataclasses import dataclass
 from utils.error_handler import ErrorData, ErrorInfo
 from utils.functional import opt_map_or_false
-from token import Token, TokenType
+from pyloxtoken import Token, TokenType
 from source import Source
 
 
@@ -233,7 +233,7 @@ class Scanner:
         else:
             return None
 
-    def scan_tokens(self) -> Iterable[Optional[Token]]:
+    def scan_tokens(self) -> Iterator[Optional[Token]]:
         """Scan the source code and return an iterable of tokens (or None if the
         current lexeme does not match any token"""
         while not self._source.is_at_end():

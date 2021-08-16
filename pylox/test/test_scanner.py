@@ -1,6 +1,6 @@
 from scanner import Scanner, TokenMatch
 from source import Source
-from token import Token, TokenType
+from pyloxtoken import Token, TokenType
 from utils.error_handler import ErrorData
 from unittest.mock import Mock
 

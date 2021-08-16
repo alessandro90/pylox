@@ -43,12 +43,16 @@ NOTE = (
 IMPORTS = (
     "from __future__ import annotations  # NOTE: No need since python 3.10+\n"
     "from typing import Any, Protocol, TypeVar\n"
-    "from token import Token\n"
+    "from pyloxtoken import Token\n"
 )
 
 GEN_COVAR = "T_co"
 
 T_COV_VAR = f'{GEN_COVAR} = TypeVar("{GEN_COVAR}", covariant=True)'
+
+GEN_INVAR = "T"
+
+T_INV = f'{GEN_INVAR} = TypeVar("{GEN_INVAR}")'
 
 
 def indent(n=1) -> str:
@@ -56,10 +60,10 @@ def indent(n=1) -> str:
 
 
 def define_expr_protocol() -> str:
-    text = f"class {EXPRESSION_CLASS_NAME}(Protocol[{GEN_COVAR}]):\n"
+    text = f"class {EXPRESSION_CLASS_NAME}(Protocol[{GEN_INVAR}]):\n"
     text += (
-        f"{indent()}def accept(visitor: Visitor[{GEN_COVAR}])"
-        + f" -> {GEN_COVAR}:\n"
+        f"{indent()}def accept(self, visitor: Visitor[{GEN_INVAR}])"
+        + f" -> {GEN_INVAR}:\n"
         + f"{indent(2)}..."
     )
     text += "\n"
@@ -69,9 +73,8 @@ def define_expr_protocol() -> str:
 def add_visitor_method(return_type: str, method: str) -> str:
     capitelized = method.capitalize()
     return (
-        f"{indent()}@staticmethod\n"
         f"{indent()}def {'visit' + capitelized + EXPRESSION_CLASS_NAME}"
-        f"(expr: {capitelized}) -> {return_type}:\n"
+        f"(self, expr: {capitelized}) -> {return_type}:\n"
         f"{indent(2)}...\n"
     )
 
@@ -115,7 +118,8 @@ def generate() -> str:
     text = NOTE
     text += "\n"
     text += IMPORTS + "\n\n"
-    text += T_COV_VAR + "\n\n\n"
+    text += T_COV_VAR + "\n"
+    text += T_INV + "\n\n\n"
     text += define_visitor(GEN_COVAR, EXPRESSIONS.keys())
     text += "\n"
     text += define_expr_protocol()
@@ -123,7 +127,7 @@ def generate() -> str:
     for class_name, fields in EXPRESSIONS.items():
         text += define_expression_class(class_name, fields)
         text += "\n\n"
-    return text[:-1]  # Remove last newline
+    return text[:-2]
 
 
 def write_file(fname: str):
