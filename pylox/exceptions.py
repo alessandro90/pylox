@@ -4,3 +4,7 @@ class InternalPyloxError(Exception):
 
 class ParserError(Exception):
     pass
+
+
+class ScannerError(Exception):
+    pass

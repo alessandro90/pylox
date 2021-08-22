@@ -1,8 +1,15 @@
 from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Iterator, Optional, Callable
+from typing import Iterator, Optional, Callable, Any
 from pyloxtoken import Token, TokenType
 import expr as e
-from exceptions import InternalPyloxError, ParserError
+from exceptions import InternalPyloxError, ParserError, ScannerError
+from utils.error_handler import report
+from dataclasses import asdict
+
+# TODO:
+# challenge 2. ch. 6 "Parsing Expressions" => implement '?:' operator
+# challenge 3. ch. 6 "Parsing Expressions" => error production for incomplete
+# binary operator
 
 
 class Parser:
@@ -10,14 +17,20 @@ class Parser:
         self._tokens = tokens
         self._current = self._try_get_next()
 
-    def parse(self) -> e.Expr:
-        return self._expression()
+    def parse(self) -> Optional[e.Expr]:
+        try:
+            return self._expression()
+        except ParserError as e:
+            report({"Parse error:": e})
+            return None
 
     def _try_get_next(self) -> Token:
         try:
             while (token := next(self._tokens)) is None:
                 pass
             return token
+        except ScannerError:
+            raise ParserError("Parse error due to previous scanner error.")
         except StopIteration:
             raise InternalPyloxError(
                 f"Accessing non-existing token: {__file__}"
@@ -28,6 +41,7 @@ class Parser:
 
     def _check_or_raise(self, token_type: TokenType, message: str) -> bool:
         if not self._check(token_type):
+            report(asdict(self._current), message)
             raise ParserError(message)
         return True
 
@@ -79,21 +93,26 @@ class Parser:
             return e.Unary(operation, right)
         return self._primary()
 
-    def _primary(self) -> e.Expr:
-        if self._match(TokenType.FALSE):
-            self._current = self._try_get_next()
-            return e.Literal(False)
-        if self._match(TokenType.TRUE):
-            self._current = self._try_get_next()
-            return e.Literal(True)
-        if self._match(TokenType.NIL):
-            self._current = self._try_get_next()
-            return e.Literal(None)
+    def _find_primary(self, tokens: dict[TokenType, Any]) -> Optional[e.Expr]:
+        for token, literal in tokens.items():
+            if self._match(token):
+                ret = e.Literal(literal)
+                self._current = self._try_get_next()
+                return ret
+        return None
 
-        if self._match(TokenType.NUMBER, TokenType.STRING):
-            literal = e.Literal(self._current.literal)
-            self._current = self._try_get_next()
-            return literal
+    def _primary(self) -> e.Expr:
+        primary_expression = self._find_primary(
+            {
+                TokenType.FALSE: False,
+                TokenType.TRUE: True,
+                TokenType.NIL: None,
+                TokenType.NUMBER: self._current.literal,
+                TokenType.STRING: self._current.literal,
+            }
+        )
+        if primary_expression is not None:
+            return primary_expression
 
         if self._match(TokenType.LEFT_PAREN):
             self._current = self._try_get_next()
@@ -105,5 +124,26 @@ class Parser:
 
             return e.Grouping(expression)
         raise InternalPyloxError(
-            f"Internal error: Invalid promary expression in {__file__}"
+            f"Internal error: Invalid primary expression in {__file__}"
         )
+
+    def _synchronize(self) -> None:
+        while not self._is_at_end():
+            if self._current.token_type == TokenType.SEMICOLON:
+                self._current = self._try_get_next()
+                return
+            if any(
+                token == self._current.token_type
+                for token in (
+                    TokenType.CLASS,
+                    TokenType.FUN,
+                    TokenType.VAR,
+                    TokenType.FOR,
+                    TokenType.IF,
+                    TokenType.WHILE,
+                    TokenType.PRINT,
+                    TokenType.RETURN,
+                )
+            ):
+                return
+            self._current = self._try_get_next()

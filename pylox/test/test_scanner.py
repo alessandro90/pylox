@@ -3,6 +3,7 @@ from source import Source
 from pyloxtoken import Token, TokenType
 from utils.error_handler import ErrorData
 from unittest.mock import Mock
+from exceptions import ScannerError
 
 
 def test_scan_tokens_end():
@@ -18,8 +19,12 @@ def test_scan_tokens_error():
     scanner = Scanner(
         source, [lambda _, __: TokenMatch.error(ErrorData(0, None, "error"))]
     )
-    assert next(scanner.scan_tokens()) is None
-    assert scanner.error_info().has_error()
+    try:
+        next(scanner.scan_tokens()) is None
+    except ScannerError:
+        assert True
+    else:
+        assert False
 
 
 def test_scan_tokens_found_one():

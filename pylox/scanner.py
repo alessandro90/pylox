@@ -1,10 +1,11 @@
 from __future__ import annotations  # NOTE: No need since python 3.10+
 from typing import Callable, Iterable, Optional, Union, Iterator
-from dataclasses import dataclass
-from utils.error_handler import ErrorData, ErrorInfo
+from dataclasses import dataclass, asdict
+from utils.error_handler import ErrorData, report
 from utils.functional import opt_map_or_false
 from pyloxtoken import Token, TokenType
 from source import Source
+from exceptions import ScannerError
 
 
 RESERVED_KEYWORDS = {
@@ -224,14 +225,6 @@ class Scanner:
     ):
         self._source = source
         self._token_finders = token_finders
-        self._error = ErrorInfo()
-
-    def error_info(self) -> Optional[ErrorInfo]:
-        """Return error information, if any"""
-        if self._error.has_error():
-            return self._error
-        else:
-            return None
 
     def scan_tokens(self) -> Iterator[Optional[Token]]:
         """Scan the source code and return an iterable of tokens (or None if the
@@ -257,11 +250,13 @@ class Scanner:
             ):
                 return token_match.result
             elif isinstance(token_match.result, ErrorData):
-                self._error.push(token_match.result)
-                return None
-        self._error.push(
-            ErrorData(
-                self._source.line(), None, f"Invalid character parsed: {c}"
+                report(asdict(token_match.result))
+                raise ScannerError(token_match.result.message)
+        report(
+            asdict(
+                ErrorData(
+                    self._source.line(), None, f"Invalid character parsed: {c}"
+                )
             )
         )
-        return None
+        raise ScannerError("Invalid character.")
