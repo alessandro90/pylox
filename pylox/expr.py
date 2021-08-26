@@ -11,40 +11,40 @@ T = TypeVar("T")
 
 
 class Visitor(Protocol[T_co]):
-    def visitAssignExpr(self, expr: Assign) -> T_co:
+    def visit_assign_expr(self, expr: Assign) -> T_co:
         ...
 
-    def visitBinaryExpr(self, expr: Binary) -> T_co:
+    def visit_binary_expr(self, expr: Binary) -> T_co:
         ...
 
-    def visitCallExpr(self, expr: Call) -> T_co:
+    def visit_call_expr(self, expr: Call) -> T_co:
         ...
 
-    def visitGetExpr(self, expr: Get) -> T_co:
+    def visit_get_expr(self, expr: Get) -> T_co:
         ...
 
-    def visitGroupingExpr(self, expr: Grouping) -> T_co:
+    def visit_grouping_expr(self, expr: Grouping) -> T_co:
         ...
 
-    def visitLiteralExpr(self, expr: Literal) -> T_co:
+    def visit_literal_expr(self, expr: Literal) -> T_co:
         ...
 
-    def visitLogicalExpr(self, expr: Logical) -> T_co:
+    def visit_logical_expr(self, expr: Logical) -> T_co:
         ...
 
-    def visitSetExpr(self, expr: Set) -> T_co:
+    def visit_set_expr(self, expr: Set) -> T_co:
         ...
 
-    def visitSuperExpr(self, expr: Super) -> T_co:
+    def visit_super_expr(self, expr: Super) -> T_co:
         ...
 
-    def visitThisExpr(self, expr: This) -> T_co:
+    def visit_this_expr(self, expr: This) -> T_co:
         ...
 
-    def visitUnaryExpr(self, expr: Unary) -> T_co:
+    def visit_unary_expr(self, expr: Unary) -> T_co:
         ...
 
-    def visitVariableExpr(self, expr: Variable) -> T_co:
+    def visit_variable_expr(self, expr: Variable) -> T_co:
         ...
 
 
@@ -59,7 +59,7 @@ class Assign:
         self.value = value
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitAssignExpr(self)
+        return visitor.visit_assign_expr(self)
 
 
 class Binary:
@@ -69,7 +69,7 @@ class Binary:
         self.right = right
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitBinaryExpr(self)
+        return visitor.visit_binary_expr(self)
 
 
 class Call:
@@ -79,7 +79,7 @@ class Call:
         self.arguments = arguments
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitCallExpr(self)
+        return visitor.visit_call_expr(self)
 
 
 class Get:
@@ -88,7 +88,7 @@ class Get:
         self.name = name
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitGetExpr(self)
+        return visitor.visit_get_expr(self)
 
 
 class Grouping:
@@ -96,7 +96,7 @@ class Grouping:
         self.expression = expression
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitGroupingExpr(self)
+        return visitor.visit_grouping_expr(self)
 
 
 class Literal:
@@ -104,7 +104,7 @@ class Literal:
         self.value = value
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitLiteralExpr(self)
+        return visitor.visit_literal_expr(self)
 
 
 class Logical:
@@ -114,7 +114,7 @@ class Logical:
         self.right = right
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitLogicalExpr(self)
+        return visitor.visit_logical_expr(self)
 
 
 class Set:
@@ -124,7 +124,7 @@ class Set:
         self.value = value
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitSetExpr(self)
+        return visitor.visit_set_expr(self)
 
 
 class Super:
@@ -133,7 +133,7 @@ class Super:
         self.method = method
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitSuperExpr(self)
+        return visitor.visit_super_expr(self)
 
 
 class This:
@@ -141,7 +141,7 @@ class This:
         self.keyword = keyword
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitThisExpr(self)
+        return visitor.visit_this_expr(self)
 
 
 class Unary:
@@ -150,7 +150,7 @@ class Unary:
         self.right = right
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitUnaryExpr(self)
+        return visitor.visit_unary_expr(self)
 
 
 class Variable:
@@ -158,4 +158,4 @@ class Variable:
         self.name = name
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
-        return visitor.visitVariableExpr(self)
+        return visitor.visit_variable_expr(self)

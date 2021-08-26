@@ -6,6 +6,7 @@ from utils.functional import opt_map_or_false
 from pyloxtoken import Token, TokenType
 from source import Source
 from exceptions import ScannerError
+from string import ascii_letters
 
 
 RESERVED_KEYWORDS = {
@@ -167,7 +168,7 @@ def token_finder_number(c: str, source: Source) -> TokenMatch:
 
 def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
     def is_alpha(char: str) -> bool:
-        return char.isalpha() or char == "_"
+        return char in ascii_letters or char == "_"
 
     def is_alphanum(char: str) -> bool:
         return is_alpha(char) or char.isdigit()

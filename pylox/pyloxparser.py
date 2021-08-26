@@ -123,8 +123,10 @@ class Parser:
                 self._current = self._try_get_next()
 
             return e.Grouping(expression)
-        raise InternalPyloxError(
-            f"Internal error: Invalid primary expression in {__file__}"
+        raise ParserError(
+            f"Invalid primary expression:\n"
+            f"Line: {self._current.line}\n"
+            f"Expression: {self._current.lexeme}"
         )
 
     def _synchronize(self) -> None:

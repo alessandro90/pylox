@@ -73,7 +73,8 @@ def define_expr_protocol() -> str:
 def add_visitor_method(return_type: str, method: str) -> str:
     capitelized = method.capitalize()
     return (
-        f"{indent()}def {'visit' + capitelized + EXPRESSION_CLASS_NAME}"
+        f"{indent()}def {'visit_' + method + '_'}"
+        f"{EXPRESSION_CLASS_NAME.lower()}"
         f"(self, expr: {capitelized}) -> {return_type}:\n"
         f"{indent(2)}...\n"
     )
@@ -108,8 +109,8 @@ def define_expression_class(class_name: str, fields: dict[str, str]) -> str:
     text += (
         f"{indent()}def accept(self, visitor: Visitor[{GEN_COVAR}])"
         f" -> {GEN_COVAR}:\n"
-        f"{indent(2)}return visitor.visit"
-        f"{class_name.capitalize() + EXPRESSION_CLASS_NAME}(self)\n"
+        f"{indent(2)}return visitor.visit_"
+        f"{class_name + '_' + EXPRESSION_CLASS_NAME.lower()}(self)\n"
     )
     return text
 
