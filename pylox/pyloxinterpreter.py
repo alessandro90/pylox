@@ -1,8 +1,12 @@
-from typing import Any, Union, Callable
+from typing import Any, Union
 import expr as e
 from pyloxtoken import TokenType, Token
 from numbers import Number
-from exceptions import InternalPyloxError, PyloxRuntimeError
+from exceptions import (
+    InternalPyloxError,
+    PyloxRuntimeError,
+    PyloxDivisionByZeroError,
+)
 from utils.error_handler import report
 
 # import operator as op
@@ -57,7 +61,7 @@ class Interpreter:
             print(pylox_stringify(value))
             return True
         except PyloxRuntimeError as e:
-            report({type(e): f"{e}\n[line {e.token.line}]"})
+            report({f"{e}": f"\n\t[line {e.token.line}]"})
             return False
 
     def visit_literal_expr(self, expr: e.Literal) -> Value:
@@ -98,6 +102,10 @@ class Interpreter:
             return left * right  # type: ignore
         if expr.operator.token_type == TokenType.SLASH:
             assertNumberOperands(expr.operator, left, right)
+            if right == 0:
+                raise PyloxDivisionByZeroError(
+                    expr.operator, "Division by zero."
+                )
             return left / right  # type: ignore
         if expr.operator.token_type == TokenType.GREATER:
             assertNumberOperands(expr.operator, left, right)
