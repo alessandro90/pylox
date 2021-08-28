@@ -1,4 +1,4 @@
-from pyloxtoken import TokenType
+from pyloxtoken import Token
 
 
 class InternalPyloxError(Exception):
@@ -14,7 +14,7 @@ class ScannerError(Exception):
 
 
 class PyloxRuntimeError(Exception):
-    def __init__(self, token: TokenType, msg: str):
+    def __init__(self, token: Token, msg: str):
         super().__init__(msg)
         self.token = token
 
