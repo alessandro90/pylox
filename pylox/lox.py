@@ -5,9 +5,10 @@ import sys
 from pyloxparser import Parser
 from typing import Optional
 from pyloxinterpreter import Interpreter
-from visitors import Stringyfier
 
-_EXIT_COMMAND = "exit()"
+# from visitors import Stringyfier
+
+_EXIT_COMMAND = ["exit!", "quit!"]
 
 
 class Lox:
@@ -21,17 +22,16 @@ class Lox:
 
     def run_prompt(self) -> None:
         try:
-            while (command := input("> ")) != _EXIT_COMMAND:
+            while (command := input("> ")) not in _EXIT_COMMAND:
                 self._run(command)
         except (EOFError, KeyboardInterrupt):
             pass
 
     def _run(self, source: str) -> Optional[int]:
         tokens = Scanner(Source(source), TOKEN_FINDERS).scan_tokens()
-        result = Parser(tokens).parse()
-        if result is None:
+        statements = Parser(tokens).parse()
+        if statements is None:
             return 65
-        print(Stringyfier().stringify(result))
-        if not self._interpreter.interpret(result):
+        if not self._interpreter.interpret(statements):
             return 70
         return None

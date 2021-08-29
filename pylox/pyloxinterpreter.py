@@ -1,5 +1,6 @@
-from typing import Any, Union
+from typing import Any, Union, Type
 import expr as e
+import stmt as s
 from pyloxtoken import TokenType, Token
 from numbers import Number
 from exceptions import (
@@ -8,8 +9,6 @@ from exceptions import (
     PyloxDivisionByZeroError,
 )
 from utils.error_handler import report
-
-# import operator as op
 
 
 Value = Union[None, Number, str, bool]
@@ -25,12 +24,17 @@ def as_boolean(val: Any):
     return True
 
 
-def assertNumberOperands(operator: Token, *operands: Value) -> None:
-    if not all(isinstance(operand, Number) for operand in operands):
-        raise PyloxRuntimeError(
-            operator,
-            f"Operand{'s' if len(operands) > 1 else ''} must be numeric.",
-        )
+def assertOperandsType(
+    operator: Token, types: list[Type[Any]], *operands: Value
+) -> None:
+    for t in types:
+        if all(isinstance(operand, t) for operand in operands):
+            return
+    raise PyloxRuntimeError(
+        operator,
+        f"Operand{'s' if len(operands) > 1 else ''} must be"
+        f" {'or '.join(t.__name__ for t in types)}.",
+    )
 
 
 def pylox_stringify(value: Any) -> str:
@@ -44,25 +48,25 @@ def pylox_stringify(value: Any) -> str:
     return str(value)
 
 
-# def interpret_expr(
-#     assertion: Callable,
-#     operation: Callable[..., Value],
-#     operator: Token,
-#     *operands: Value,
-# ) -> Value:
-#     assertion(operator, *operands)
-#     return operation(*operands)
-
-
 class Interpreter:
-    def interpret(self, expr: e.Expr) -> bool:
+    def interpret(self, statements: list[s.Stmt]) -> bool:
         try:
-            value = self._evaluate(expr)
-            print(pylox_stringify(value))
+            for statement in statements:
+                self._execute(statement)
             return True
         except PyloxRuntimeError as e:
             report({f"{e}": f"\n\t[line {e.token.line}]"})
             return False
+
+    def _execute(self, statement: s.Stmt) -> None:
+        statement.accept(self)
+
+    def visit_expression_stmt(self, stmt: s.Expression) -> None:
+        self._evaluate(stmt.expression)
+
+    def visit_print_stmt(self, stmt: s.Print) -> None:
+        value = self._evaluate(stmt.expression)
+        print(pylox_stringify(value))
 
     def visit_literal_expr(self, expr: e.Literal) -> Value:
         return expr.value
@@ -73,7 +77,7 @@ class Interpreter:
     def visit_unary_expr(self, expr: e.Unary) -> Value:
         right = self._evaluate(expr.right)
         if expr.operator.token_type == TokenType.MINUS:
-            assertNumberOperands(expr.operator, right)
+            assertOperandsType(expr.operator, [Number], right)
             return -right  # type: ignore
         if expr.operator.token_type == TokenType.BANG:
             return not as_boolean(right)
@@ -85,39 +89,32 @@ class Interpreter:
         left = self._evaluate(expr.left)
         right = self._evaluate(expr.right)
         if expr.operator.token_type == TokenType.MINUS:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             return left - right  # type: ignore
         if expr.operator.token_type == TokenType.PLUS:
-            if (isinstance(left, str) and isinstance(right, str)) or (
-                isinstance(left, Number) and isinstance(right, Number)
-            ):
-                return left + right  # type: ignore
-            else:
-                PyloxRuntimeError(
-                    expr.operator,
-                    "Operands must be two numbers or two strings.",
-                )
+            assertOperandsType(expr.operator, [Number, str], left, right)
+            return left + right  # type: ignore
         if expr.operator.token_type == TokenType.STAR:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             return left * right  # type: ignore
         if expr.operator.token_type == TokenType.SLASH:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             if right == 0:
                 raise PyloxDivisionByZeroError(
                     expr.operator, "Division by zero."
                 )
             return left / right  # type: ignore
         if expr.operator.token_type == TokenType.GREATER:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             return left > right  # type: ignore
         if expr.operator.token_type == TokenType.GREATER_EQUAL:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             return left >= right  # type: ignore
         if expr.operator.token_type == TokenType.LESS:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             return left < right  # type: ignore
         if expr.operator.token_type == TokenType.LESS_EQUAL:
-            assertNumberOperands(expr.operator, left, right)
+            assertOperandsType(expr.operator, [Number], left, right)
             return left <= right  # type: ignore
         if expr.operator.token_type == TokenType.EQUAL_EQUAL:
             return left == right

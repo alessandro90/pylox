@@ -2,6 +2,7 @@ from __future__ import annotations  # NOTE: No need since python 3.10+
 from typing import Iterator, Optional, Callable, Any
 from pyloxtoken import Token, TokenType
 import expr as e
+import stmt as s
 from exceptions import InternalPyloxError, ParserError, ScannerError
 from utils.error_handler import report
 from dataclasses import asdict
@@ -17,12 +18,35 @@ class Parser:
         self._tokens = tokens
         self._current = self._try_get_next()
 
-    def parse(self) -> Optional[e.Expr]:
+    def parse(self) -> Optional[list[s.Stmt]]:
+        statements = []
         try:
-            return self._expression()
+            while not self._is_at_end():
+                statements.append(self._statement())
+            return statements
         except ParserError as e:
             report({"Parse error:": e})
             return None
+
+    def _statement(self) -> s.Stmt:
+        if self._match(TokenType.PRINT):
+            self._current = self._try_get_next()
+            return self._print_statement()
+        return self._expression_statement()
+
+    def _print_statement(self) -> s.Stmt:
+        value = self._expression()
+        if self._check_or_raise(TokenType.SEMICOLON, "Expect ';' after value."):
+            self._current = self._try_get_next()
+        return s.Print(value)
+
+    def _expression_statement(self) -> s.Stmt:
+        expression = self._expression()
+        if self._check_or_raise(
+            TokenType.SEMICOLON, "Expect ';' after expression."
+        ):
+            self._current = self._try_get_next()
+        return s.Expression(expression)
 
     def _try_get_next(self) -> Token:
         try:
