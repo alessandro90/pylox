@@ -2,7 +2,8 @@
 # Do not manually change it.
 
 from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Protocol, TypeVar
+from typing import Protocol, TypeVar, Optional
+from pyloxtoken import Token
 import expr as e
 
 
@@ -15,6 +16,9 @@ class Visitor(Protocol[T_co]):
         ...
 
     def visit_print_stmt(self, stmt: Print) -> T_co:
+        ...
+
+    def visit_var_stmt(self, stmt: Var) -> T_co:
         ...
 
 
@@ -37,3 +41,12 @@ class Print:
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
         return visitor.visit_print_stmt(self)
+
+
+class Var:
+    def __init__(self, name: Token, initializer: Optional[e.Expr]):
+        self.name = name
+        self.initializer = initializer
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_var_stmt(self)

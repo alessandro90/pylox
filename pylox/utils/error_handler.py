@@ -18,9 +18,11 @@ class ErrorData:
 
 
 def report(data: dict[Any, Any], message: Optional[str] = None) -> None:
-    str_data = "".join([f"{k}: {v}" for k, v in data.items() if v is not None])
+    str_data = "; ".join(
+        [f"{k}: {v}" for k, v in data.items() if v is not None]
+    )
     if message is not None:
-        _print_error(str_data, message)
+        _print_error(str_data, ": ", message)
     else:
         _print_error(str_data)
 

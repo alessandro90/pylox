@@ -11,7 +11,8 @@ EXPR_IMPORTS = (
 
 STMT_IMPORTS = (
     "from __future__ import annotations  # NOTE: No need since python 3.10+\n"
-    "from typing import Protocol, TypeVar\n"
+    "from typing import Protocol, TypeVar, Optional\n"
+    "from pyloxtoken import Token\n"
     "import expr as e\n"
 )
 
@@ -53,6 +54,10 @@ STATEMENT_CLASS_NAME = "Stmt"
 STATEMENTS = {
     "expression": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "print": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
+    "var": {
+        "name": "Token",
+        "initializer": f"{'Optional[e.'+EXPRESSION_CLASS_NAME}]",
+    },
 }
 
 AST = {

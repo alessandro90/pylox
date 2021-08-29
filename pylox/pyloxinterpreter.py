@@ -9,6 +9,7 @@ from exceptions import (
     PyloxDivisionByZeroError,
 )
 from utils.error_handler import report
+from environment import Environment
 
 
 Value = Union[None, Number, str, bool]
@@ -33,7 +34,7 @@ def assertOperandsType(
     raise PyloxRuntimeError(
         operator,
         f"Operand{'s' if len(operands) > 1 else ''} must be"
-        f" {'or '.join(t.__name__ for t in types)}.",
+        f" {' or '.join(t.__name__ for t in types)}.",
     )
 
 
@@ -49,6 +50,9 @@ def pylox_stringify(value: Any) -> str:
 
 
 class Interpreter:
+    def __init__(self):
+        self._environemnt = Environment()
+
     def interpret(self, statements: list[s.Stmt]) -> bool:
         try:
             for statement in statements:
@@ -67,6 +71,13 @@ class Interpreter:
     def visit_print_stmt(self, stmt: s.Print) -> None:
         value = self._evaluate(stmt.expression)
         print(pylox_stringify(value))
+
+    def visit_var_stmt(self, stmt: s.Var) -> None:
+        if stmt.initializer is None:
+            value = None
+        else:
+            value = self._evaluate(stmt.initializer)
+        self._environemnt.define(stmt.name.lexeme, value)
 
     def visit_literal_expr(self, expr: e.Literal) -> Value:
         return expr.value
@@ -149,4 +160,4 @@ class Interpreter:
         ...
 
     def visit_variable_expr(self, expr: e.Variable) -> Value:
-        ...
+        return self._environemnt.get(expr.name)

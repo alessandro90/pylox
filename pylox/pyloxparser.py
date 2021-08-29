@@ -18,15 +18,39 @@ class Parser:
         self._tokens = tokens
         self._current = self._try_get_next()
 
-    def parse(self) -> Optional[list[s.Stmt]]:
+    def parse(self) -> list[s.Stmt]:
         statements = []
+        while not self._is_at_end():
+            statement = self._declaration()
+            if statement is not None:
+                statements.append(statement)
+        return statements
+
+    def _declaration(self) -> Optional[s.Stmt]:
         try:
-            while not self._is_at_end():
-                statements.append(self._statement())
-            return statements
-        except ParserError as e:
-            report({"Parse error:": e})
+            if self._match(TokenType.VAR):
+                return self._var_declaration()
+            return self._statement()
+        except ParserError:
+            self._synchronize()
             return None
+
+    def _var_declaration(self) -> s.Stmt:
+        self._current = self._try_get_next()
+        name = self._current
+        self._current = self._get_next_if_current_is(
+            TokenType.IDENTIFIER, "Expect variable name."
+        )
+
+        if self._match(TokenType.EQUAL):
+            self._current = self._try_get_next()
+            initializer = self._expression()
+        else:
+            initializer = None
+        self._current = self._get_next_if_current_is(
+            TokenType.SEMICOLON, "Expect ';' after variable declaration"
+        )
+        return s.Var(name, initializer)
 
     def _statement(self) -> s.Stmt:
         if self._match(TokenType.PRINT):
@@ -36,16 +60,16 @@ class Parser:
 
     def _print_statement(self) -> s.Stmt:
         value = self._expression()
-        if self._check_or_raise(TokenType.SEMICOLON, "Expect ';' after value."):
-            self._current = self._try_get_next()
+        self._current = self._get_next_if_current_is(
+            TokenType.SEMICOLON, "Expect ';' after value."
+        )
         return s.Print(value)
 
     def _expression_statement(self) -> s.Stmt:
         expression = self._expression()
-        if self._check_or_raise(
+        self._current = self._get_next_if_current_is(
             TokenType.SEMICOLON, "Expect ';' after expression."
-        ):
-            self._current = self._try_get_next()
+        )
         return s.Expression(expression)
 
     def _try_get_next(self) -> Token:
@@ -60,20 +84,24 @@ class Parser:
                 f"Accessing non-existing token: {__file__}"
             )
 
-    def _check(self, token_type: TokenType) -> bool:
-        return self._current.token_type == token_type
-
-    def _check_or_raise(self, token_type: TokenType, message: str) -> bool:
-        if not self._check(token_type):
+    def _assertCurrent(self, token_type: Token, message: str) -> None:
+        if not self._match(token_type):
             report(asdict(self._current), message)
             raise ParserError(message)
-        return True
+
+    def _get_next_if_current_is(
+        self, token_type: TokenType, message: str
+    ) -> Token:
+        self._assertCurrent(token_type, message)
+        return self._try_get_next()
 
     def _match(self, *token_types: TokenType) -> bool:
-        return any(self._check(token_type) for token_type in token_types)
+        return any(
+            self._current.token_type == token_type for token_type in token_types
+        )
 
     def _is_at_end(self) -> bool:
-        return self._check(TokenType.EOF)
+        return self._match(TokenType.EOF)
 
     def _expression(self) -> e.Expr:
         return self._equality()
@@ -117,7 +145,7 @@ class Parser:
             return e.Unary(operation, right)
         return self._primary()
 
-    def _find_primary(self, tokens: dict[TokenType, Any]) -> Optional[e.Expr]:
+    def _find_literal(self, tokens: dict[TokenType, Any]) -> Optional[e.Expr]:
         for token, literal in tokens.items():
             if self._match(token):
                 ret = e.Literal(literal)
@@ -126,26 +154,30 @@ class Parser:
         return None
 
     def _primary(self) -> e.Expr:
-        primary_expression = self._find_primary(
-            {
-                TokenType.FALSE: False,
-                TokenType.TRUE: True,
-                TokenType.NIL: None,
-                TokenType.NUMBER: self._current.literal,
-                TokenType.STRING: self._current.literal,
-            }
-        )
-        if primary_expression is not None:
+        if (
+            primary_expression := self._find_literal(
+                {
+                    TokenType.FALSE: False,
+                    TokenType.TRUE: True,
+                    TokenType.NIL: None,
+                    TokenType.NUMBER: self._current.literal,
+                    TokenType.STRING: self._current.literal,
+                }
+            )
+        ) is not None:
             return primary_expression
+
+        if self._match(TokenType.IDENTIFIER):
+            var = self._current
+            self._current = self._try_get_next()
+            return e.Variable(var)
 
         if self._match(TokenType.LEFT_PAREN):
             self._current = self._try_get_next()
             expression = self._expression()
-            if self._check_or_raise(
+            self._current = self._get_next_if_current_is(
                 TokenType.RIGHT_PAREN, "Expect ')' after expression."
-            ):
-                self._current = self._try_get_next()
-
+            )
             return e.Grouping(expression)
         raise ParserError(
             f"Invalid primary expression:\n"
