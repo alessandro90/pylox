@@ -52,6 +52,10 @@ def pylox_stringify(value: Any) -> str:
 class Interpreter:
     def __init__(self):
         self._environemnt = Environment()
+        self._isrepl = False
+
+    def set_repl(self) -> None:
+        self._isrepl = True
 
     def interpret(self, statements: list[s.Stmt]) -> bool:
         try:
@@ -66,7 +70,9 @@ class Interpreter:
         statement.accept(self)
 
     def visit_expression_stmt(self, stmt: s.Expression) -> None:
-        self._evaluate(stmt.expression)
+        val = self._evaluate(stmt.expression)
+        if self._isrepl:
+            print(pylox_stringify(val))
 
     def visit_print_stmt(self, stmt: s.Print) -> None:
         value = self._evaluate(stmt.expression)
