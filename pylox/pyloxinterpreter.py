@@ -79,6 +79,25 @@ class Interpreter:
             value = self._evaluate(stmt.initializer)
         self._environemnt.define(stmt.name.lexeme, value)
 
+    def visit_block_stmt(self, stmt: s.Block) -> None:
+        self._execute_block(
+            stmt.statements, Environment.nest(self._environemnt)
+        )
+        return None
+
+    def _execute_block(
+        self, statements: list[s.Stmt], env: Environment
+    ) -> None:
+        prev = self._environemnt
+        try:
+            self._environemnt = env
+            for statement in statements:
+                self._execute(statement)
+        except PyloxRuntimeError:
+            pass
+        finally:
+            self._environemnt = prev
+
     def visit_literal_expr(self, expr: e.Literal) -> Value:
         return expr.value
 
@@ -139,7 +158,9 @@ class Interpreter:
         return expression.accept(self)
 
     def visit_assign_expr(self, expr: e.Assign) -> Value:
-        ...
+        value = self._evaluate(expr.value)
+        self._environemnt.assign(expr.name, value)
+        return value
 
     def visit_call_expr(self, expr: e.Call) -> Value:
         ...

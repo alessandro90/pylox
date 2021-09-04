@@ -52,6 +52,7 @@ EXPRESSIONS = {
 
 STATEMENT_CLASS_NAME = "Stmt"
 STATEMENTS = {
+    "block": {"statements": f"list[{STATEMENT_CLASS_NAME}]"},
     "expression": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "print": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "var": {

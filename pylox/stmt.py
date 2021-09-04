@@ -12,6 +12,9 @@ T = TypeVar("T")
 
 
 class Visitor(Protocol[T_co]):
+    def visit_block_stmt(self, stmt: Block) -> T_co:
+        ...
+
     def visit_expression_stmt(self, stmt: Expression) -> T_co:
         ...
 
@@ -25,6 +28,14 @@ class Visitor(Protocol[T_co]):
 class Stmt(Protocol[T]):
     def accept(self, visitor: Visitor[T]) -> T:
         ...
+
+
+class Block:
+    def __init__(self, statements: list[Stmt]):
+        self.statements = statements
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_block_stmt(self)
 
 
 class Expression:

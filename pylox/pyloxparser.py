@@ -56,7 +56,19 @@ class Parser:
         if self._match(TokenType.PRINT):
             self._current = self._try_get_next()
             return self._print_statement()
+        if self._match(TokenType.LEFT_BRACE):
+            self._current = self._try_get_next()
+            return s.Block(self._block())
         return self._expression_statement()
+
+    def _block(self):
+        statements = []
+        while not self._match(TokenType.RIGHT_BRACE) and not self._is_at_end():
+            statements.append(self._declaration())
+        self._current = self._get_next_if_current_is(
+            TokenType.RIGHT_BRACE, "Expect '}' after block."
+        )
+        return statements
 
     def _print_statement(self) -> s.Stmt:
         value = self._expression()
@@ -104,7 +116,21 @@ class Parser:
         return self._match(TokenType.EOF)
 
     def _expression(self) -> e.Expr:
-        return self._equality()
+        return self._assignment()
+
+    def _assignment(self) -> e.Expr:
+        expr = self._equality()
+        if self._match(TokenType.EQUAL):
+            equals = self._current
+            self._current = self._try_get_next()
+            value = self._assignment()
+
+            if isinstance(expr, e.Variable):
+                return e.Assign(expr.name, value)
+
+            report(asdict(equals), "Invalid assignement target.")
+
+        return expr
 
     def _binary_expr(
         self, op: Callable[[], e.Expr], *token_types: TokenType
