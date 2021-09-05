@@ -25,7 +25,9 @@ class Environment:
             if self._enclosing is not None:
                 return self._enclosing.get(name)
         except KeyError:
-            raise PyloxRuntimeError(f'Undefined variable "{name.lexeme}".')
+            raise PyloxRuntimeError(
+                name, f'Undefined variable "{name.lexeme}".'
+            )
 
     def assign(self, name: Token, value: Any) -> None:
         if name.lexeme in self._values.keys():

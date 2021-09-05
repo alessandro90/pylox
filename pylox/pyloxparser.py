@@ -18,12 +18,10 @@ class Parser:
         self._tokens = tokens
         self._current = self._try_get_next()
 
-    def parse(self) -> list[s.Stmt]:
+    def parse(self) -> list[Optional[s.Stmt]]:
         statements = []
         while not self._is_at_end():
-            statement = self._declaration()
-            if statement is not None:
-                statements.append(statement)
+            statements.append(self._declaration())
         return statements
 
     def _declaration(self) -> Optional[s.Stmt]:
@@ -31,7 +29,8 @@ class Parser:
             if self._match(TokenType.VAR):
                 return self._var_declaration()
             return self._statement()
-        except ParserError:
+        except ParserError as e:
+            report({"Parse error": e})
             self._synchronize()
             return None
 
@@ -42,11 +41,10 @@ class Parser:
             TokenType.IDENTIFIER, "Expect variable name."
         )
 
+        initializer: Optional[e.Expr] = None
         if self._match(TokenType.EQUAL):
             self._current = self._try_get_next()
             initializer = self._expression()
-        else:
-            initializer = None
         self._current = self._get_next_if_current_is(
             TokenType.SEMICOLON, "Expect ';' after variable declaration"
         )
@@ -96,15 +94,11 @@ class Parser:
                 f"Accessing non-existing token: {__file__}"
             )
 
-    def _assertCurrent(self, token_type: Token, message: str) -> None:
-        if not self._match(token_type):
-            report(asdict(self._current), message)
-            raise ParserError(message)
-
     def _get_next_if_current_is(
         self, token_type: TokenType, message: str
     ) -> Token:
-        self._assertCurrent(token_type, message)
+        if not self._match(token_type):
+            raise ParserError(self._current, message)
         return self._try_get_next()
 
     def _match(self, *token_types: TokenType) -> bool:
@@ -124,7 +118,6 @@ class Parser:
             equals = self._current
             self._current = self._try_get_next()
             value = self._assignment()
-
             if isinstance(expr, e.Variable):
                 return e.Assign(expr.name, value)
 
@@ -205,6 +198,7 @@ class Parser:
                 TokenType.RIGHT_PAREN, "Expect ')' after expression."
             )
             return e.Grouping(expression)
+
         raise ParserError(
             f"Invalid primary expression:\n"
             f"Line: {self._current.line}\n"
