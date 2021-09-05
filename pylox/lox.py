@@ -29,10 +29,10 @@ class Lox:
     def _run(self, source: str) -> int:
         tokens = Scanner(Source(source), TOKEN_FINDERS).scan_tokens()
         statements = Parser(tokens).parse()
+        if statements is None:
+            return 65
         if len(statements) == 0:
             return 0
-        if any(stmt is None for stmt in statements):
-            return 65
         if not self._interpreter.interpret(statements):
             return 70
         return 0

@@ -91,6 +91,13 @@ class Interpreter:
         )
         return None
 
+    def visit_if_stmt(self, stmt: s.If) -> None:
+        if as_boolean(self._evaluate(stmt.condition)):
+            self._execute(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            self._execute(stmt.else_branch)
+        return None
+
     def _execute_block(
         self, statements: list[s.Stmt], env: Environment
     ) -> None:
@@ -175,7 +182,15 @@ class Interpreter:
         ...
 
     def visit_logical_expr(self, expr: e.Logical) -> Value:
-        ...
+        left = self._evaluate(expr.left)
+        truthy = as_boolean(left)
+        if expr.operator.token_type is TokenType.OR:
+            if truthy:
+                return left
+        else:  # AND
+            if not truthy:
+                return left
+        return self._evaluate(expr.right)
 
     def visit_set_expr(self, expr: e.Set) -> Value:
         ...

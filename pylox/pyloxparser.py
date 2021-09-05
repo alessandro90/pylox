@@ -1,5 +1,5 @@
 from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Iterator, Optional, Callable, Any
+from typing import Iterator, Optional, Callable, Any, Type, Union
 from pyloxtoken import Token, TokenType
 import expr as e
 import stmt as s
@@ -18,10 +18,17 @@ class Parser:
         self._tokens = tokens
         self._current = self._try_get_next()
 
-    def parse(self) -> list[Optional[s.Stmt]]:
+    def parse(self) -> Optional[list[s.Stmt]]:
         statements = []
+        has_error = False
         while not self._is_at_end():
-            statements.append(self._declaration())
+            statement = self._statement()
+            if statement is not None and not has_error:
+                statements.append(statement)
+            else:
+                has_error = True
+        if has_error:
+            return None
         return statements
 
     def _declaration(self) -> Optional[s.Stmt]:
@@ -51,6 +58,9 @@ class Parser:
         return s.Var(name, initializer)
 
     def _statement(self) -> s.Stmt:
+        if self._match(TokenType.IF):
+            self._current = self._try_get_next()
+            return self._if_statement()
         if self._match(TokenType.PRINT):
             self._current = self._try_get_next()
             return self._print_statement()
@@ -58,6 +68,20 @@ class Parser:
             self._current = self._try_get_next()
             return s.Block(self._block())
         return self._expression_statement()
+
+    def _if_statement(self):
+        self._current = self._get_next_if_current_is(
+            TokenType.LEFT_PAREN, "Expect '(' after if."
+        )
+        condition = self._expression()
+        self._current = self._get_next_if_current_is(
+            TokenType.RIGHT_PAREN, "Expect ')' after if body."
+        )
+        then_branch = self._statement()
+        else_branch = None
+        if self._match(TokenType.ELSE):
+            else_branch = self._statement()
+        return s.If(condition, then_branch, else_branch)
 
     def _block(self):
         statements = []
@@ -113,7 +137,7 @@ class Parser:
         return self._assignment()
 
     def _assignment(self) -> e.Expr:
-        expr = self._equality()
+        expr = self._or()
         if self._match(TokenType.EQUAL):
             equals = self._current
             self._current = self._try_get_next()
@@ -125,36 +149,49 @@ class Parser:
 
         return expr
 
+    def _or(self) -> e.Expr:
+        return self._binary_expr(self._and, [TokenType.OR], e.Logical)
+
+    def _and(self):
+        return self._binary_expr(self._equality, [TokenType.AND], e.Logical)
+
     def _binary_expr(
-        self, op: Callable[[], e.Expr], *token_types: TokenType
+        self,
+        op: Callable[[], e.Expr],
+        token_types: list[TokenType],
+        expr_class: Type[Union[e.Binary, e.Logical]] = e.Binary,
     ) -> e.Expr:
         expression = op()
         while self._match(*token_types):
             operation = self._current
             self._current = self._try_get_next()
             right = op()
-            expression = e.Binary(expression, operation, right)
+            expression = expr_class(expression, operation, right)
         return expression
 
     def _equality(self) -> e.Expr:
         return self._binary_expr(
-            self._comparison, TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL
+            self._comparison, [TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL]
         )
 
     def _comparison(self) -> e.Expr:
         return self._binary_expr(
             self._term,
-            TokenType.GREATER,
-            TokenType.GREATER_EQUAL,
-            TokenType.LESS,
-            TokenType.LESS_EQUAL,
+            [
+                TokenType.GREATER,
+                TokenType.GREATER_EQUAL,
+                TokenType.LESS,
+                TokenType.LESS_EQUAL,
+            ],
         )
 
     def _term(self) -> e.Expr:
-        return self._binary_expr(self._factor, TokenType.MINUS, TokenType.PLUS)
+        return self._binary_expr(
+            self._factor, [TokenType.MINUS, TokenType.PLUS]
+        )
 
     def _factor(self) -> e.Expr:
-        return self._binary_expr(self._unary, TokenType.SLASH, TokenType.STAR)
+        return self._binary_expr(self._unary, [TokenType.SLASH, TokenType.STAR])
 
     def _unary(self) -> e.Expr:
         if self._match(TokenType.BANG, TokenType.MINUS):

@@ -18,6 +18,9 @@ class Visitor(Protocol[T_co]):
     def visit_expression_stmt(self, stmt: Expression) -> T_co:
         ...
 
+    def visit_if_stmt(self, stmt: If) -> T_co:
+        ...
+
     def visit_print_stmt(self, stmt: Print) -> T_co:
         ...
 
@@ -44,6 +47,16 @@ class Expression:
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
         return visitor.visit_expression_stmt(self)
+
+
+class If:
+    def __init__(self, condition: e.Expr, then_branch: Stmt, else_branch: Stmt):
+        self.condition = condition
+        self.then_branch = then_branch
+        self.else_branch = else_branch
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_if_stmt(self)
 
 
 class Print:

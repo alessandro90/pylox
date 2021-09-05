@@ -54,6 +54,11 @@ STATEMENT_CLASS_NAME = "Stmt"
 STATEMENTS = {
     "block": {"statements": f"list[{STATEMENT_CLASS_NAME}]"},
     "expression": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
+    "if": {
+        "condition": f"e.{EXPRESSION_CLASS_NAME}",
+        "then_branch": STATEMENT_CLASS_NAME,
+        "else_branch": STATEMENT_CLASS_NAME,
+    },
     "print": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "var": {
         "name": "Token",
