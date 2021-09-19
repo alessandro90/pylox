@@ -19,15 +19,12 @@ class Environment:
         self._values[name] = value
 
     def get(self, name: Token) -> Any:
-        try:
-            if (value := self._values.get(name.lexeme, None)) is not None:
-                return value
-            if self._enclosing is not None:
-                return self._enclosing.get(name)
-        except KeyError:
-            raise PyloxRuntimeError(
-                name, f'Undefined variable "{name.lexeme}".'
-            )
+        if (value := self._values.get(name.lexeme, None)) is not None:
+            return value
+        if self._enclosing is not None:
+            return self._enclosing.get(name)
+
+        raise PyloxRuntimeError(name, f'Undefined variable "{name.lexeme}".')
 
     def assign(self, name: Token, value: Any) -> None:
         if name.lexeme in self._values.keys():

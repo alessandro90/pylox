@@ -57,12 +57,16 @@ STATEMENTS = {
     "if": {
         "condition": f"e.{EXPRESSION_CLASS_NAME}",
         "then_branch": STATEMENT_CLASS_NAME,
-        "else_branch": STATEMENT_CLASS_NAME,
+        "else_branch": f"Optional[{STATEMENT_CLASS_NAME}]",
     },
     "print": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "var": {
         "name": "Token",
         "initializer": f"{'Optional[e.'+EXPRESSION_CLASS_NAME}]",
+    },
+    "while": {
+        "condition": f"e.{EXPRESSION_CLASS_NAME}",
+        "body": STATEMENT_CLASS_NAME,
     },
 }
 

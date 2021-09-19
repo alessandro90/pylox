@@ -27,6 +27,9 @@ class Visitor(Protocol[T_co]):
     def visit_var_stmt(self, stmt: Var) -> T_co:
         ...
 
+    def visit_while_stmt(self, stmt: While) -> T_co:
+        ...
+
 
 class Stmt(Protocol[T]):
     def accept(self, visitor: Visitor[T]) -> T:
@@ -50,7 +53,7 @@ class Expression:
 
 
 class If:
-    def __init__(self, condition: e.Expr, then_branch: Stmt, else_branch: Stmt):
+    def __init__(self, condition: e.Expr, then_branch: Stmt, else_branch: Optional[Stmt]):
         self.condition = condition
         self.then_branch = then_branch
         self.else_branch = else_branch
@@ -74,3 +77,12 @@ class Var:
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
         return visitor.visit_var_stmt(self)
+
+
+class While:
+    def __init__(self, condition: e.Expr, body: Stmt):
+        self.condition = condition
+        self.body = body
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_while_stmt(self)

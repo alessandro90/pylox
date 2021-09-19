@@ -20,7 +20,7 @@ def as_boolean(val: Any):
     Return True otherwise."""
     if val is None:
         return False
-    if isinstance(val, bool):
+    if type(val) is bool:
         return val
     return True
 
@@ -34,7 +34,8 @@ def assertOperandsType(
     raise PyloxRuntimeError(
         operator,
         f"Operand{'s' if len(operands) > 1 else ''} must be"
-        f" {' or '.join(t.__name__ for t in types)}.",
+        f" {' or '.join(t.__name__ for t in types)}."
+        f"{[repr(op) for op in operands]}",
     )
 
 
@@ -42,10 +43,7 @@ def pylox_stringify(value: Any) -> str:
     if value is None:
         return "nil"
     if isinstance(value, Number):
-        text = str(value)
-        if text.endswith(".0"):
-            text = text[:-2]
-        return text
+        return str(value).removesuffix(".0")
     return str(value)
 
 
@@ -98,6 +96,11 @@ class Interpreter:
             self._execute(stmt.else_branch)
         return None
 
+    def visit_while_stmt(self, stmt: s.While) -> None:
+        while as_boolean(self._evaluate(stmt.condition)):
+            self._execute(stmt.body)
+        return None
+
     def _execute_block(
         self, statements: list[s.Stmt], env: Environment
     ) -> None:
@@ -107,7 +110,7 @@ class Interpreter:
             for statement in statements:
                 self._execute(statement)
         except PyloxRuntimeError:
-            pass
+            raise
         finally:
             self._environemnt = prev
 

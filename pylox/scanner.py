@@ -246,11 +246,11 @@ class Scanner:
             token_match = finder(c, self._source)
             if token_match.result is SENTINEL_TOKEN_NOT_FOUND:
                 continue
-            elif token_match.result is None or isinstance(
-                token_match.result, Token
+            elif (
+                token_match.result is None or type(token_match.result) is Token
             ):
                 return token_match.result
-            elif isinstance(token_match.result, ErrorData):
+            elif type(token_match.result) is ErrorData:
                 report(asdict(token_match.result))
                 raise ScannerError(token_match.result.message)
         report(

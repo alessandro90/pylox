@@ -17,17 +17,18 @@ class Parser:
     def __init__(self, tokens: Iterator[Optional[Token]]):
         self._tokens = tokens
         self._current = self._try_get_next()
+        self._has_error = False
 
     def parse(self) -> Optional[list[s.Stmt]]:
         statements = []
-        has_error = False
         while not self._is_at_end():
-            statement = self._statement()
-            if statement is not None and not has_error:
+            try:
+                statement = self._declaration()
+            except ParserError as e:
+                report({"ParseError:": e})
+            if not self._has_error:
                 statements.append(statement)
-            else:
-                has_error = True
-        if has_error:
+        if self._has_error:
             return None
         return statements
 
@@ -39,6 +40,7 @@ class Parser:
         except ParserError as e:
             report({"Parse error": e})
             self._synchronize()
+            self._has_error = True
             return None
 
     def _var_declaration(self) -> s.Stmt:
@@ -58,18 +60,80 @@ class Parser:
         return s.Var(name, initializer)
 
     def _statement(self) -> s.Stmt:
+        if self._match(TokenType.FOR):
+            return self._for_statement()
         if self._match(TokenType.IF):
             self._current = self._try_get_next()
             return self._if_statement()
         if self._match(TokenType.PRINT):
             self._current = self._try_get_next()
             return self._print_statement()
+        if self._match(TokenType.WHILE):
+            return self._while_statement()
         if self._match(TokenType.LEFT_BRACE):
             self._current = self._try_get_next()
             return s.Block(self._block())
         return self._expression_statement()
 
-    def _if_statement(self):
+    def _for_statement(self) -> s.Stmt:
+        self._current = self._try_get_next()
+
+        self._current = self._get_next_if_current_is(
+            TokenType.LEFT_PAREN, "Expect '(' after 'for'."
+        )
+
+        if self._match(TokenType.SEMICOLON):
+            initializer = None
+            self._current = self._try_get_next()
+        elif self._match(TokenType.VAR):
+            initializer = self._var_declaration()
+        else:
+            initializer = self._expression_statement()
+
+        condition: Optional[e.Expr] = None
+        if not self._match(TokenType.SEMICOLON):
+            condition = self._expression()
+
+        self._current = self._get_next_if_current_is(
+            TokenType.SEMICOLON, "Expect ';' after loop condition."
+        )
+
+        increment: Optional[e.Expr] = None
+        if not self._match(TokenType.RIGHT_PAREN):
+            increment = self._expression()
+
+        self._current = self._get_next_if_current_is(
+            TokenType.RIGHT_PAREN, "Expect ')' after for clauses."
+        )
+
+        body = self._statement()
+
+        if increment is not None:
+            body = s.Block([body, s.Expression(increment)])
+
+        if condition is None:
+            condition = e.Literal(True)
+
+        body = s.While(condition, body)
+
+        if initializer is not None:
+            body = s.Block([initializer, body])
+
+        return body
+
+    def _while_statement(self) -> s.Stmt:
+        self._current = self._try_get_next()
+        self._current = self._get_next_if_current_is(
+            TokenType.LEFT_PAREN, "Expect '(' after a 'while'."
+        )
+        condition = self._expression()
+        self._current = self._get_next_if_current_is(
+            TokenType.RIGHT_PAREN, "Expect ')' after condition."
+        )
+        body = self._statement()
+        return s.While(condition, body)
+
+    def _if_statement(self) -> s.Stmt:
         self._current = self._get_next_if_current_is(
             TokenType.LEFT_PAREN, "Expect '(' after if."
         )
@@ -83,10 +147,12 @@ class Parser:
             else_branch = self._statement()
         return s.If(condition, then_branch, else_branch)
 
-    def _block(self):
+    def _block(self) -> list[s.Stmt]:
         statements = []
         while not self._match(TokenType.RIGHT_BRACE) and not self._is_at_end():
-            statements.append(self._declaration())
+            decl = self._declaration()
+            if decl is not None:
+                statements.append(decl)
         self._current = self._get_next_if_current_is(
             TokenType.RIGHT_BRACE, "Expect '}' after block."
         )
@@ -112,6 +178,7 @@ class Parser:
                 pass
             return token
         except ScannerError:
+            self._has_error = True
             raise ParserError("Parse error due to previous scanner error.")
         except StopIteration:
             raise InternalPyloxError(
@@ -122,6 +189,7 @@ class Parser:
         self, token_type: TokenType, message: str
     ) -> Token:
         if not self._match(token_type):
+            self._has_error = True
             raise ParserError(self._current, message)
         return self._try_get_next()
 
@@ -142,7 +210,7 @@ class Parser:
             equals = self._current
             self._current = self._try_get_next()
             value = self._assignment()
-            if isinstance(expr, e.Variable):
+            if type(expr) is e.Variable:
                 return e.Assign(expr.name, value)
 
             report(asdict(equals), "Invalid assignement target.")
@@ -183,6 +251,7 @@ class Parser:
                 TokenType.LESS,
                 TokenType.LESS_EQUAL,
             ],
+            e.Binary,
         )
 
     def _term(self) -> e.Expr:
@@ -236,6 +305,7 @@ class Parser:
             )
             return e.Grouping(expression)
 
+        self._has_error = True
         raise ParserError(
             f"Invalid primary expression:\n"
             f"Line: {self._current.line}\n"
