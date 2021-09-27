@@ -54,6 +54,11 @@ STATEMENT_CLASS_NAME = "Stmt"
 STATEMENTS = {
     "block": {"statements": f"list[{STATEMENT_CLASS_NAME}]"},
     "expression": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
+    "function": {
+        "name": "Token",
+        "params": "list[Token]",
+        "body": f"list[{STATEMENT_CLASS_NAME}]",
+    },
     "if": {
         "condition": f"e.{EXPRESSION_CLASS_NAME}",
         "then_branch": STATEMENT_CLASS_NAME,

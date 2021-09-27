@@ -18,6 +18,9 @@ class Visitor(Protocol[T_co]):
     def visit_expression_stmt(self, stmt: Expression) -> T_co:
         ...
 
+    def visit_function_stmt(self, stmt: Function) -> T_co:
+        ...
+
     def visit_if_stmt(self, stmt: If) -> T_co:
         ...
 
@@ -50,6 +53,16 @@ class Expression:
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
         return visitor.visit_expression_stmt(self)
+
+
+class Function:
+    def __init__(self, name: Token, params: list[Token], body: list[Stmt]):
+        self.name = name
+        self.params = params
+        self.body = body
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_function_stmt(self)
 
 
 class If:

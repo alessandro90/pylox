@@ -14,6 +14,8 @@ from dataclasses import asdict
 
 
 class Parser:
+    _MAX_PARAMS = 255
+
     def __init__(self, tokens: Iterator[Optional[Token]]):
         self._tokens = tokens
         self._current = self._try_get_next()
@@ -26,7 +28,7 @@ class Parser:
                 statement = self._declaration()
             except ParserError as e:
                 report({"ParseError:": e})
-            if not self._has_error:
+            if not self._has_error and statement is not None:
                 statements.append(statement)
         if self._has_error:
             return None
@@ -34,6 +36,8 @@ class Parser:
 
     def _declaration(self) -> Optional[s.Stmt]:
         try:
+            if self._match(TokenType.FUN):
+                return self._function("function")
             if self._match(TokenType.VAR):
                 return self._var_declaration()
             return self._statement()
@@ -42,6 +46,45 @@ class Parser:
             self._synchronize()
             self._has_error = True
             return None
+
+    def _function(self, fun: str) -> s.Stmt:
+        self._current = self._expect(
+            TokenType.IDENTIFIER, f"Expect {fun} name"
+        )  # Consume fun keyword
+        name = self._current
+        self._current = self._expect(
+            TokenType.LEFT_PAREN, f"Expect '(' after {fun} name"
+        )
+        self._current = self._try_get_next()
+        if not self._match(TokenType.RIGHT_PAREN):
+            if not self._match(TokenType.IDENTIFIER):
+                self._has_error = True
+                raise ParserError(self._current, "Expect parameter name.")
+            parameters = [self._current]
+            self._current = self._try_get_next()
+            while self._match(TokenType.COMMA):
+                self._current = self._expect(
+                    TokenType.IDENTIFIER, "Expect parameter name"
+                )
+                parameters.append(self._current)
+                if len(parameters) >= Parser._MAX_PARAMS:
+                    self._has_error = True
+                    report(
+                        asdict(self._current),
+                        f"Can't have more than {Parser._MAX_PARAMS} parameters",
+                    )
+                self._current = self._try_get_next()
+
+        if not self._match(TokenType.RIGHT_PAREN):
+            self._has_error = True
+            raise ParserError(self._current, "Expect ')' after parameters.")
+
+        self._current = self._expect(
+            TokenType.LEFT_BRACE, f"Expect '{{' before {fun} body."
+        )
+        self._current = self._try_get_next()
+        body = self._block()
+        return s.Function(name, parameters, body)
 
     def _var_declaration(self) -> s.Stmt:
         self._current = self._try_get_next()
@@ -193,6 +236,13 @@ class Parser:
             raise ParserError(self._current, message)
         return self._try_get_next()
 
+    def _expect(self, token_type: TokenType, msg: str) -> Token:
+        tkn = self._try_get_next()
+        if tkn.token_type is not token_type:
+            self._has_error = True
+            raise ParserError(tkn, msg)
+        return tkn
+
     def _match(self, *token_types: TokenType) -> bool:
         return any(
             self._current.token_type == token_type for token_type in token_types
@@ -268,7 +318,40 @@ class Parser:
             self._current = self._try_get_next()
             right = self._unary()
             return e.Unary(operation, right)
-        return self._primary()
+        return self._call()
+
+    def _call(self) -> e.Expr:
+        expr = self._primary()
+
+        while True:
+            if self._match(TokenType.LEFT_PAREN):
+                self._current = self._try_get_next()
+                expr = self._finishCall(expr)
+            else:
+                break
+
+        return expr
+
+    def _finishCall(self, callee: e.Expr) -> e.Expr:
+        if not self._match(TokenType.RIGHT_PAREN):
+            arguments: list[e.Expr] = []
+            while True:
+                if len(arguments) >= Parser._MAX_PARAMS:
+                    self._has_error = True
+                    report(
+                        asdict(self._current),
+                        f"Can't have more than {Parser._MAX_PARAMS} arguments.",
+                    )
+                arguments.append(self._expression())
+                if self._match(TokenType.COMMA):
+                    self._current = self._try_get_next()
+                else:
+                    break
+        paren = self._current
+        self._current = self._get_next_if_current_is(
+            TokenType.RIGHT_PAREN, "Expect ')' after arguments."
+        )
+        return e.Call(callee, paren, arguments)
 
     def _find_literal(self, tokens: dict[TokenType, Any]) -> Optional[e.Expr]:
         for token, literal in tokens.items():
