@@ -2,6 +2,7 @@ from typing import Any, Protocol, runtime_checkable
 import expr as e
 import stmt as s
 from environment import Environment
+from exceptions import Return
 
 
 class CallableVisitor(Protocol):
@@ -28,12 +29,15 @@ class LoxFunction:
     def __init__(self, declaration: s.Function):
         self._declaration = declaration
 
-    def call(self, interpreter: CallableVisitor, arguments: list[Any]) -> None:
+    def call(self, interpreter: CallableVisitor, arguments: list[Any]) -> Any:
         env = Environment.nest(interpreter.get_globals())
         for par, arg in zip(self._declaration.params, arguments):
             env.define(par.lexeme, arg)
 
-        interpreter.execute_block(self._declaration.body, env)
+        try:
+            interpreter.execute_block(self._declaration.body, env)
+        except Return as r:
+            return r.value
         return None
 
     def arity(self) -> int:

@@ -1,4 +1,5 @@
 from pyloxtoken import Token
+from typing import Any
 
 
 class InternalPyloxError(Exception):
@@ -21,3 +22,8 @@ class PyloxRuntimeError(Exception):
 
 class PyloxDivisionByZeroError(PyloxRuntimeError):
     pass
+
+
+class Return(Exception):
+    def __init__(self, value: Any):
+        self.value = value

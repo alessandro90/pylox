@@ -56,6 +56,7 @@ class Parser:
             TokenType.LEFT_PAREN, f"Expect '(' after {fun} name"
         )
         self._current = self._try_get_next()
+        parameters: list[Token] = []
         if not self._match(TokenType.RIGHT_PAREN):
             if not self._match(TokenType.IDENTIFIER):
                 self._has_error = True
@@ -111,12 +112,26 @@ class Parser:
         if self._match(TokenType.PRINT):
             self._current = self._try_get_next()
             return self._print_statement()
+        if self._match(TokenType.RETURN):
+            return self._return_statement()
         if self._match(TokenType.WHILE):
             return self._while_statement()
         if self._match(TokenType.LEFT_BRACE):
             self._current = self._try_get_next()
             return s.Block(self._block())
         return self._expression_statement()
+
+    def _return_statement(self) -> s.Stmt:
+        keyword = self._current
+        self._current = self._try_get_next()
+        value: Optional[e.Expr] = None
+        if not self._match(TokenType.SEMICOLON):
+            value = self._expression()
+
+        self._current = self._get_next_if_current_is(
+            TokenType.SEMICOLON, "Expect ';' after return value."
+        )
+        return s.Return(keyword, value)
 
     def _for_statement(self) -> s.Stmt:
         self._current = self._try_get_next()
@@ -333,8 +348,8 @@ class Parser:
         return expr
 
     def _finishCall(self, callee: e.Expr) -> e.Expr:
+        arguments: list[e.Expr] = []
         if not self._match(TokenType.RIGHT_PAREN):
-            arguments: list[e.Expr] = []
             while True:
                 if len(arguments) >= Parser._MAX_PARAMS:
                     self._has_error = True
@@ -363,7 +378,7 @@ class Parser:
 
     def _primary(self) -> e.Expr:
         if (
-            primary_expression := self._find_literal(
+            literal := self._find_literal(
                 {
                     TokenType.FALSE: False,
                     TokenType.TRUE: True,
@@ -373,7 +388,7 @@ class Parser:
                 }
             )
         ) is not None:
-            return primary_expression
+            return literal
 
         if self._match(TokenType.IDENTIFIER):
             var = self._current

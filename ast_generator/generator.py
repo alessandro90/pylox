@@ -65,6 +65,10 @@ STATEMENTS = {
         "else_branch": f"Optional[{STATEMENT_CLASS_NAME}]",
     },
     "print": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
+    "return": {
+        "keyword": "Token",
+        "value": f"Optional[e.{EXPRESSION_CLASS_NAME}]",
+    },
     "var": {
         "name": "Token",
         "initializer": f"{'Optional[e.'+EXPRESSION_CLASS_NAME}]",

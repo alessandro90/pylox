@@ -27,6 +27,9 @@ class Visitor(Protocol[T_co]):
     def visit_print_stmt(self, stmt: Print) -> T_co:
         ...
 
+    def visit_return_stmt(self, stmt: Return) -> T_co:
+        ...
+
     def visit_var_stmt(self, stmt: Var) -> T_co:
         ...
 
@@ -81,6 +84,15 @@ class Print:
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
         return visitor.visit_print_stmt(self)
+
+
+class Return:
+    def __init__(self, keyword: Token, value: Optional[e.Expr]):
+        self.keyword = keyword
+        self.value = value
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_return_stmt(self)
 
 
 class Var:

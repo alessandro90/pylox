@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any, Type, Optional
 import expr as e
 import stmt as s
 from pyloxtoken import TokenType, Token
@@ -7,6 +7,7 @@ from exceptions import (
     InternalPyloxError,
     PyloxRuntimeError,
     PyloxDivisionByZeroError,
+    Return,
 )
 from utils.error_handler import report
 from environment import Environment
@@ -224,3 +225,9 @@ class Interpreter:
         function = LoxFunction(stmt)
         self._environemnt.define(stmt.name.lexeme, function)
         return None
+
+    def visit_return_stmt(self, stmt: s.Return) -> None:
+        value: Optional[Any] = None
+        if stmt.value is not None:
+            value = self._evaluate(stmt.value)
+        raise Return(value)
