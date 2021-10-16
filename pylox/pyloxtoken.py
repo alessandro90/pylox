@@ -1,4 +1,4 @@
-from __future__ import annotations  # NOTE: No need since python 3.10+
+from __future__ import annotations  # NOTE: No need since python 3.11+
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Any

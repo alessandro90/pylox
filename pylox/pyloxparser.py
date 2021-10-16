@@ -1,5 +1,5 @@
-from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Iterator, Optional, Callable, Any, Type
+from __future__ import annotations  # NOTE: No need since python 3.11+
+from typing import Iterator, Callable, Any, Type
 from pyloxtoken import Token, TokenType
 import expr as e
 import stmt as s
@@ -16,12 +16,12 @@ from dataclasses import asdict
 class Parser:
     _MAX_PARAMS = 255
 
-    def __init__(self, tokens: Iterator[Optional[Token]]):
+    def __init__(self, tokens: Iterator[Token | None]):
         self._tokens = tokens
         self._current = self._try_get_next()
         self._has_error = False
 
-    def parse(self) -> Optional[list[s.Stmt]]:
+    def parse(self) -> list[s.Stmt] | None:
         statements = []
         while not self._is_at_end():
             try:
@@ -35,7 +35,7 @@ class Parser:
             return None
         return statements
 
-    def _declaration(self) -> Optional[s.Stmt]:
+    def _declaration(self) -> s.Stmt | None:
         try:
             if self._match(TokenType.FUN):
                 return self._function("function")
@@ -95,7 +95,7 @@ class Parser:
             TokenType.IDENTIFIER, "Expect variable name."
         )
 
-        initializer: Optional[e.Expr] = None
+        initializer: e.Expr | None = None
         if self._match(TokenType.EQUAL):
             self._current = self._try_get_next()
             initializer = self._expression()
@@ -125,7 +125,7 @@ class Parser:
     def _return_statement(self) -> s.Stmt:
         keyword = self._current
         self._current = self._try_get_next()
-        value: Optional[e.Expr] = None
+        value: e.Expr | None = None
         if not self._match(TokenType.SEMICOLON):
             value = self._expression()
 
@@ -149,7 +149,7 @@ class Parser:
         else:
             initializer = self._expression_statement()
 
-        condition: Optional[e.Expr] = None
+        condition: e.Expr | None = None
         if not self._match(TokenType.SEMICOLON):
             condition = self._expression()
 
@@ -157,7 +157,7 @@ class Parser:
             TokenType.SEMICOLON, "Expect ';' after loop condition."
         )
 
-        increment: Optional[e.Expr] = None
+        increment: e.Expr | None = None
         if not self._match(TokenType.RIGHT_PAREN):
             increment = self._expression()
 
@@ -369,7 +369,7 @@ class Parser:
         )
         return e.Call(callee, paren, arguments)
 
-    def _find_literal(self, tokens: dict[TokenType, Any]) -> Optional[e.Expr]:
+    def _find_literal(self, tokens: dict[TokenType, Any]) -> e.Expr | None:
         for token, literal in tokens.items():
             if self._match(token):
                 ret = e.Literal(literal)

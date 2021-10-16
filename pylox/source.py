@@ -1,6 +1,3 @@
-from typing import Optional
-
-
 class Source:
     """Helper class to manage a source file (or repl command)"""
 
@@ -35,7 +32,7 @@ class Source:
         self._current += 1
         return c
 
-    def peek(self, depth: int = 0) -> Optional[str]:
+    def peek(self, depth: int = 0) -> str | None:
         """Returns next + detph character, if any, otherwise return None"""
         if self._current + depth >= self._source_len:
             return None

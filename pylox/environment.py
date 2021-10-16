@@ -1,5 +1,5 @@
-from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Any, Optional
+from __future__ import annotations  # NOTE: No need since python 3.11+
+from typing import Any
 from pyloxtoken import Token
 from exceptions import PyloxRuntimeError
 
@@ -7,7 +7,7 @@ from exceptions import PyloxRuntimeError
 class Environment:
     def __init__(self):
         self._values: dict[str, Any] = {}
-        self._enclosing: Optional[Environment] = None
+        self._enclosing: Environment | None = None
 
     @classmethod
     def nest(cls, enclosing: Environment) -> Environment:

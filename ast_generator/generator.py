@@ -4,14 +4,14 @@ import sys
 
 
 EXPR_IMPORTS = (
-    "from __future__ import annotations  # NOTE: No need since python 3.10+\n"
+    "from __future__ import annotations  # NOTE: No need since python 3.11+\n"
     "from typing import Any, Protocol, TypeVar\n"
     "from pyloxtoken import Token\n"
 )
 
 STMT_IMPORTS = (
-    "from __future__ import annotations  # NOTE: No need since python 3.10+\n"
-    "from typing import Protocol, TypeVar, Optional\n"
+    "from __future__ import annotations  # NOTE: No need since python 3.11+\n"
+    "from typing import Protocol, TypeVar\n"
     "from pyloxtoken import Token\n"
     "import expr as e\n"
 )
@@ -62,16 +62,16 @@ STATEMENTS = {
     "if": {
         "condition": f"e.{EXPRESSION_CLASS_NAME}",
         "then_branch": STATEMENT_CLASS_NAME,
-        "else_branch": f"Optional[{STATEMENT_CLASS_NAME}]",
+        "else_branch": f"{STATEMENT_CLASS_NAME} | None",
     },
     "print": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "return": {
         "keyword": "Token",
-        "value": f"Optional[e.{EXPRESSION_CLASS_NAME}]",
+        "value": f"e.{EXPRESSION_CLASS_NAME} | None",
     },
     "var": {
         "name": "Token",
-        "initializer": f"{'Optional[e.'+EXPRESSION_CLASS_NAME}]",
+        "initializer": f"{'e.'+EXPRESSION_CLASS_NAME} | None",
     },
     "while": {
         "condition": f"e.{EXPRESSION_CLASS_NAME}",

@@ -1,4 +1,4 @@
-from typing import Any, Type, Optional
+from typing import Any, Type
 import expr as e
 import stmt as s
 from pyloxtoken import TokenType, Token
@@ -233,7 +233,7 @@ class Interpreter:
         return None
 
     def visit_return_stmt(self, stmt: s.Return) -> None:
-        value: Optional[Any] = None
+        value: Any | None = None
         if stmt.value is not None:
             value = self._evaluate(stmt.value)
         raise Return(value)

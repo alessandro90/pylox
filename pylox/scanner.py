@@ -1,5 +1,5 @@
-from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Callable, Iterable, Optional, Iterator
+from __future__ import annotations  # NOTE: No need since python 3.11+
+from typing import Callable, Iterable, Iterator
 from dataclasses import dataclass, asdict
 from utils.error_handler import ErrorData, report
 from utils.functional import opt_map_or_false
@@ -34,7 +34,7 @@ class NotFound:
     pass
 
 
-TokenFinderResult = Optional[Token | ErrorData | NotFound]
+TokenFinderResult = Token | ErrorData | NotFound | None
 
 
 @dataclass(frozen=True, eq=False)
@@ -48,7 +48,7 @@ class TokenMatch:
         return cls(result=NotFound())
 
     @classmethod
-    def found(cls, res: Optional[Token] = None) -> TokenMatch:
+    def found(cls, res: Token | None = None) -> TokenMatch:
         return cls(result=res)
 
     @classmethod
@@ -231,7 +231,7 @@ class Scanner:
         self._source = source
         self._token_finders = token_finders
 
-    def scan_tokens(self) -> Iterator[Optional[Token]]:
+    def scan_tokens(self) -> Iterator[Token | None]:
         """Scan the source code and return an iterable of tokens (or None if the
         current lexeme does not match any token"""
         while not self._source.is_at_end():
@@ -240,7 +240,7 @@ class Scanner:
 
         yield Token(TokenType.EOF, "", None, self._source.line())
 
-    def _scan_token(self) -> Optional[Token]:
+    def _scan_token(self) -> Token | None:
         """Produce a Token, or None if there is no match.
         Also update errors if detected"""
 

@@ -1,5 +1,5 @@
 # from pyloxtoken import Token, TokenType
-from typing import Any, Optional
+from typing import Any
 from dataclasses import dataclass
 
 import sys
@@ -13,11 +13,11 @@ def _print_error(*args: Any, **kwargs: Any) -> None:
 @dataclass(frozen=True)
 class ErrorData:
     line: int
-    where: Optional[str]
+    where: str | None
     message: str
 
 
-def report(data: dict[Any, Any], message: Optional[str] = None) -> None:
+def report(data: dict[Any, Any], message: str | None = None) -> None:
     str_data = "; ".join(
         [f"{k}: {v}" for k, v in data.items() if v is not None]
     )
