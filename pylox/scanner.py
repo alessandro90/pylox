@@ -1,5 +1,5 @@
 from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Callable, Iterable, Optional, Union, Iterator
+from typing import Callable, Iterable, Optional, Iterator
 from dataclasses import dataclass, asdict
 from utils.error_handler import ErrorData, report
 from utils.functional import opt_map_or_false
@@ -29,8 +29,12 @@ RESERVED_KEYWORDS = {
 }
 
 
-SENTINEL_TOKEN_NOT_FOUND = object()  # Sentinel object
-TokenFinderResult = Optional[Union[Token, ErrorData, object]]
+class NotFound:
+    """A sentinel object to indicate something is not found."""
+    pass
+
+
+TokenFinderResult = Optional[Token | ErrorData | NotFound]
 
 
 @dataclass(frozen=True, eq=False)
@@ -41,7 +45,7 @@ class TokenMatch:
 
     @classmethod
     def none(cls) -> TokenMatch:
-        return cls(result=SENTINEL_TOKEN_NOT_FOUND)
+        return cls(result=NotFound())
 
     @classmethod
     def found(cls, res: Optional[Token] = None) -> TokenMatch:
@@ -244,15 +248,14 @@ class Scanner:
 
         for finder in self._token_finders:
             token_match = finder(c, self._source)
-            if token_match.result is SENTINEL_TOKEN_NOT_FOUND:
-                continue
-            elif (
-                token_match.result is None or type(token_match.result) is Token
-            ):
-                return token_match.result
-            elif type(token_match.result) is ErrorData:
-                report(asdict(token_match.result))
-                raise ScannerError(token_match.result.message)
+            match token_match.result:
+                case Token() | None:
+                    return token_match.result
+                case ErrorData():
+                    report(asdict(token_match.result))
+                    raise ScannerError(token_match.result.message)
+                case NotFound():
+                    continue
         report(
             asdict(
                 ErrorData(

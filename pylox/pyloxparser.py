@@ -1,5 +1,5 @@
 from __future__ import annotations  # NOTE: No need since python 3.10+
-from typing import Iterator, Optional, Callable, Any, Type, Union
+from typing import Iterator, Optional, Callable, Any, Type
 from pyloxtoken import Token, TokenType
 import expr as e
 import stmt as s
@@ -28,8 +28,9 @@ class Parser:
                 statement = self._declaration()
             except ParserError as e:
                 report({"ParseError:": e})
-            if not self._has_error and statement is not None:
-                statements.append(statement)
+            else:
+                if not self._has_error and statement is not None:
+                    statements.append(statement)
         if self._has_error:
             return None
         return statements
@@ -292,7 +293,7 @@ class Parser:
         self,
         op: Callable[[], e.Expr],
         token_types: list[TokenType],
-        expr_class: Type[Union[e.Binary, e.Logical]] = e.Binary,
+        expr_class: Type[e.Binary | e.Logical] = e.Binary,
     ) -> e.Expr:
         expression = op()
         while self._match(*token_types):

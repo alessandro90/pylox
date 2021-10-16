@@ -18,11 +18,13 @@ from native import Clock
 def as_boolean(val: Any):
     """Return False if val is None or val is False.
     Return True otherwise."""
-    if val is None:
-        return False
-    if type(val) is bool:
-        return val
-    return True
+    match val:
+        case bool():
+            return val
+        case None:
+            return False
+        case _:
+            return True
 
 
 def assertOperandsType(
@@ -40,11 +42,13 @@ def assertOperandsType(
 
 
 def pylox_stringify(value: Any) -> str:
-    if value is None:
-        return "nil"
-    if isinstance(value, Number):
-        return str(value).removesuffix(".0")
-    return str(value)
+    match value:
+        case None:
+            return "nil"
+        case Number():
+            return str(value).removesuffix(".0")
+        case _:
+            return str(value)
 
 
 class Interpreter:
@@ -124,11 +128,12 @@ class Interpreter:
 
     def visit_unary_expr(self, expr: e.Unary) -> Any:
         right = self._evaluate(expr.right)
-        if expr.operator.token_type == TokenType.MINUS:
-            assertOperandsType(expr.operator, [Number], right)
-            return -right  # type: ignore
-        if expr.operator.token_type == TokenType.BANG:
-            return not as_boolean(right)
+        match expr.operator.token_type:
+            case TokenType.MINUS:
+                assertOperandsType(expr.operator, [Number], right)
+                return -right  # type: ignore
+            case TokenType.BANG:
+                return not as_boolean(right)
         raise InternalPyloxError(
             f"Invalid unary expression {expr.operator.token_type}"
         )
@@ -136,38 +141,39 @@ class Interpreter:
     def visit_binary_expr(self, expr: e.Binary) -> Any:
         left = self._evaluate(expr.left)
         right = self._evaluate(expr.right)
-        if expr.operator.token_type == TokenType.MINUS:
-            assertOperandsType(expr.operator, [Number], left, right)
-            return left - right  # type: ignore
-        if expr.operator.token_type == TokenType.PLUS:
-            assertOperandsType(expr.operator, [Number, str], left, right)
-            return left + right  # type: ignore
-        if expr.operator.token_type == TokenType.STAR:
-            assertOperandsType(expr.operator, [Number], left, right)
-            return left * right  # type: ignore
-        if expr.operator.token_type == TokenType.SLASH:
-            assertOperandsType(expr.operator, [Number], left, right)
-            if right == 0:
-                raise PyloxDivisionByZeroError(
-                    expr.operator, "Division by zero."
-                )
-            return left / right  # type: ignore
-        if expr.operator.token_type == TokenType.GREATER:
-            assertOperandsType(expr.operator, [Number], left, right)
-            return left > right  # type: ignore
-        if expr.operator.token_type == TokenType.GREATER_EQUAL:
-            assertOperandsType(expr.operator, [Number], left, right)
-            return left >= right  # type: ignore
-        if expr.operator.token_type == TokenType.LESS:
-            assertOperandsType(expr.operator, [Number], left, right)
-            return left < right  # type: ignore
-        if expr.operator.token_type == TokenType.LESS_EQUAL:
-            assertOperandsType(expr.operator, [Number], left, right)
-            return left <= right  # type: ignore
-        if expr.operator.token_type == TokenType.EQUAL_EQUAL:
-            return left == right
-        if expr.operator.token_type == TokenType.BANG_EQUAL:
-            return left != right
+        match expr.operator.token_type:
+            case TokenType.MINUS:
+                assertOperandsType(expr.operator, [Number], left, right)
+                return left - right  # type: ignore
+            case TokenType.PLUS:
+                assertOperandsType(expr.operator, [Number, str], left, right)
+                return left + right  # type: ignore
+            case TokenType.STAR:
+                assertOperandsType(expr.operator, [Number], left, right)
+                return left * right  # type: ignore
+            case TokenType.SLASH:
+                assertOperandsType(expr.operator, [Number], left, right)
+                if right == 0:
+                    raise PyloxDivisionByZeroError(
+                        expr.operator, "Division by zero."
+                    )
+                return left / right  # type: ignore
+            case TokenType.GREATER:
+                assertOperandsType(expr.operator, [Number], left, right)
+                return left > right  # type: ignore
+            case TokenType.GREATER_EQUAL:
+                assertOperandsType(expr.operator, [Number], left, right)
+                return left >= right  # type: ignore
+            case TokenType.LESS:
+                assertOperandsType(expr.operator, [Number], left, right)
+                return left < right  # type: ignore
+            case TokenType.LESS_EQUAL:
+                assertOperandsType(expr.operator, [Number], left, right)
+                return left <= right  # type: ignore
+            case TokenType.EQUAL_EQUAL:
+                return left == right
+            case TokenType.BANG_EQUAL:
+                return left != right
         raise InternalPyloxError(
             f"Invalid binary operator: {expr.operator.lexeme}"
         )

@@ -12,7 +12,7 @@ def a_source():
 
 def test_token_finder_single_char_not_found(a_source):
     find_dot = s.token_finder_single_char_factory(".", TokenType.DOT)
-    assert find_dot("-", a_source).result is s.SENTINEL_TOKEN_NOT_FOUND
+    assert find_dot("-", a_source).result is s.NotFound
 
 
 def test_token_finder_single_char_found(a_source):
@@ -25,9 +25,7 @@ def test_token_finder_disambiguate_not_found(a_source):
         "=", "=", TokenType.EQUAL, TokenType.EQUAL_EQUAL
     )
 
-    assert (
-        find_eq_or_double_eq(".", a_source).result is s.SENTINEL_TOKEN_NOT_FOUND
-    )
+    assert find_eq_or_double_eq(".", a_source).result is s.NotFound
 
 
 def test_token_finder_disambiguate_found_first():
@@ -55,10 +53,7 @@ def test_token_finder_disambiguate_found_second():
 
 
 def test_token_finder_slash_or_comment_not_found(a_source):
-    assert (
-        s.token_finder_slash_or_comment(".", a_source).result
-        is s.SENTINEL_TOKEN_NOT_FOUND
-    )
+    assert s.token_finder_slash_or_comment(".", a_source).result is s.NotFound
 
 
 def test_token_finder_slash_or_comment_found_single_line():
@@ -92,7 +87,7 @@ def test_token_finder_slash_or_comment_found_multi_line_untermined():
 def test_token_finder_discard_not_found(a_source):
     assert (
         s.token_finder_discard_factory("x", "y", "z")("a", a_source).result
-        is s.SENTINEL_TOKEN_NOT_FOUND
+        is s.NotFound
     )
 
 
@@ -105,10 +100,7 @@ def test_token_finder_discard_found():
 
 
 def test_token_finder_newline_not_found(a_source):
-    assert (
-        s.token_finder_newline("x", a_source).result
-        is s.SENTINEL_TOKEN_NOT_FOUND
-    )
+    assert s.token_finder_newline("x", a_source).result is s.NotFound
 
 
 def test_token_finder_newline_found(a_source):
@@ -117,10 +109,7 @@ def test_token_finder_newline_found(a_source):
 
 
 def test_token_finder_string_not_found(a_source):
-    assert (
-        s.token_finder_string("x", a_source).result
-        is s.SENTINEL_TOKEN_NOT_FOUND
-    )
+    assert s.token_finder_string("x", a_source).result is s.NotFound
 
 
 def test_token_finder_string_found():
@@ -150,14 +139,8 @@ def test_token_finder_multiline_untermined_string_found():
 
 
 def test_token_finder_find_number_not_found(a_source):
-    assert (
-        s.token_finder_number("a", a_source).result
-        is s.SENTINEL_TOKEN_NOT_FOUND
-    )
-    assert (
-        s.token_finder_number(".", a_source).result
-        is s.SENTINEL_TOKEN_NOT_FOUND
-    )
+    assert s.token_finder_number("a", a_source).result is s.NotFound
+    assert s.token_finder_number(".", a_source).result is s.NotFound
 
 
 def test_token_finder_find_number_integer_found():
@@ -182,7 +165,7 @@ def test_token_finder_keyword_or_identifier_not_found(a_source):
     for c in chars:
         assert (
             s.token_finder_keyword_or_identifier(c, a_source).result
-            is s.SENTINEL_TOKEN_NOT_FOUND
+            is s.NotFound
         )
 
 
