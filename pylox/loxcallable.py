@@ -26,11 +26,12 @@ class LoxCallable(Protocol):
 
 
 class LoxFunction:
-    def __init__(self, declaration: s.Function):
+    def __init__(self, declaration: s.Function, closure: Environment):
         self._declaration = declaration
+        self._closure = closure
 
     def call(self, interpreter: CallableVisitor, arguments: list[Any]) -> Any:
-        env = Environment.nest(interpreter.get_globals())
+        env = Environment.nest(self._closure)
         for par, arg in zip(self._declaration.params, arguments):
             env.define(par.lexeme, arg)
 

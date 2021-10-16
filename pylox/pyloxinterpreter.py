@@ -228,7 +228,7 @@ class Interpreter:
         return self._environemnt.get(expr.name)
 
     def visit_function_stmt(self, stmt: s.Function) -> None:
-        function = LoxFunction(stmt)
+        function = LoxFunction(stmt, self._environemnt)
         self._environemnt.define(stmt.name.lexeme, function)
         return None
 
