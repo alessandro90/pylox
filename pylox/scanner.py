@@ -181,7 +181,7 @@ def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
         return TokenMatch.none()
     while opt_map_or_false(source.peek(), lambda x: is_alphanum(x)):
         source.advance()
-    if (keyword := RESERVED_KEYWORDS.get(source.lexeme(), None)) is not None:
+    if (keyword := RESERVED_KEYWORDS.get(source.lexeme())) is not None:
         return TokenMatch.found(Token.make(source, keyword))
     else:
         return TokenMatch.found(Token.make(source, TokenType.IDENTIFIER))

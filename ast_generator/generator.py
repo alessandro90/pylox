@@ -5,13 +5,13 @@ import sys
 
 EXPR_IMPORTS = (
     "from __future__ import annotations  # NOTE: No need since python 3.11+\n"
-    "from typing import Any, Protocol, TypeVar\n"
+    "from typing import Any, Protocol, TypeVar, runtime_checkable\n"
     "from pyloxtoken import Token\n"
 )
 
 STMT_IMPORTS = (
     "from __future__ import annotations  # NOTE: No need since python 3.11+\n"
-    "from typing import Protocol, TypeVar\n"
+    "from typing import Protocol, TypeVar, runtime_checkable\n"
     "from pyloxtoken import Token\n"
     "import expr as e\n"
 )
@@ -113,7 +113,8 @@ def indent(n=1) -> str:
 
 
 def define_protocol(name: str) -> str:
-    text = f"class {name}(Protocol[{GEN_INVAR}]):\n"
+    text = "@runtime_checkable\n"
+    text += f"class {name}(Protocol[{GEN_INVAR}]):\n"
     text += (
         f"{indent()}def accept(self, visitor: Visitor[{GEN_INVAR}])"
         + f" -> {GEN_INVAR}:\n"

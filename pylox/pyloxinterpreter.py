@@ -56,6 +56,7 @@ class Interpreter:
         self._isrepl = False
         self._globals = Environment()
         self._environemnt = self._globals
+        self._locals: dict[e.Expr, int] = {}
 
         self._globals.define("clock", Clock())
 
@@ -73,6 +74,9 @@ class Interpreter:
         except PyloxRuntimeError as e:
             report({f"{e}": f"\n\t[line {e.token.line}]"})
             return False
+
+    def resolve(self, expr: e.Expr, depth: int) -> None:
+        self._locals[expr] = depth
 
     def _execute(self, statement: s.Stmt) -> None:
         statement.accept(self)
@@ -183,7 +187,10 @@ class Interpreter:
 
     def visit_assign_expr(self, expr: e.Assign) -> Any:
         value = self._evaluate(expr.value)
-        self._environemnt.assign(expr.name, value)
+        if (distance := self._locals.get(expr)) is not None:
+            self._environemnt.assign_at(distance, expr.name, value)
+        else:
+            self._globals.assign(expr.name, value)
         return value
 
     def visit_call_expr(self, expr: e.Call) -> Any:
@@ -225,7 +232,12 @@ class Interpreter:
         ...
 
     def visit_variable_expr(self, expr: e.Variable) -> Any:
-        return self._environemnt.get(expr.name)
+        return self._look_up_variable(expr.name, expr)
+
+    def _look_up_variable(self, name: Token, expr: e.Variable):
+        if (distance := self._locals.get(expr)) is not None:
+            return self._environemnt.get_at(distance, name.lexeme)
+        return self._globals.get(name)
 
     def visit_function_stmt(self, stmt: s.Function) -> None:
         function = LoxFunction(stmt, self._environemnt)

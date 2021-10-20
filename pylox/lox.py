@@ -4,6 +4,7 @@ from utils.file_reader import read_as_string
 import sys
 from pyloxparser import Parser
 from pyloxinterpreter import Interpreter
+from pyloxresolver import Resolver
 
 # from visitors import Stringyfier
 
@@ -33,6 +34,8 @@ class Lox:
             return 65
         if len(statements) == 0:
             return 0
+        if not Resolver(self._interpreter).resolve_statements(statements):
+            return 65
         if not self._interpreter.interpret(statements):
             return 70
         return 0

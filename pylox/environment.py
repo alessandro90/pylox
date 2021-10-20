@@ -19,7 +19,7 @@ class Environment:
         self._values[name] = value
 
     def get(self, name: Token) -> Any:
-        if (value := self._values.get(name.lexeme, None)) is not None:
+        if (value := self._values.get(name.lexeme)) is not None:
             return value
         if self._enclosing is not None:
             return self._enclosing.get(name)
@@ -34,3 +34,18 @@ class Environment:
             self._enclosing.assign(name, value)
             return
         raise PyloxRuntimeError(name, f'Undefined variable "{name.lexeme}"')
+
+    def get_at(self, distance: int, name: str) -> Any:
+        return self._ancestor(distance)._values.get(name)
+
+    def assign_at(self, distance: int, name: Token, value: Any) -> None:
+        self._ancestor(distance)._values[name.lexeme] = value
+
+    def _ancestor(self, distance: int) -> Environment:
+        environment = self
+        for i in range(distance):
+            assert (
+                environment._enclosing is not None
+            ), "Internal error: Invalid null scope."
+            environment = environment._enclosing
+        return environment

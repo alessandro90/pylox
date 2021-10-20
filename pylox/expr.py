@@ -2,7 +2,7 @@
 # Do not manually change it.
 
 from __future__ import annotations  # NOTE: No need since python 3.11+
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar, runtime_checkable
 from pyloxtoken import Token
 
 
@@ -48,6 +48,7 @@ class Visitor(Protocol[T_co]):
         ...
 
 
+@runtime_checkable
 class Expr(Protocol[T]):
     def accept(self, visitor: Visitor[T]) -> T:
         ...
