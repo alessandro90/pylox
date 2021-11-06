@@ -15,6 +15,9 @@ class Visitor(Protocol[T_co]):
     def visit_block_stmt(self, stmt: Block) -> T_co:
         ...
 
+    def visit_class_stmt(self, stmt: Class) -> T_co:
+        ...
+
     def visit_expression_stmt(self, stmt: Expression) -> T_co:
         ...
 
@@ -51,6 +54,15 @@ class Block:
         return visitor.visit_block_stmt(self)
 
 
+class Class:
+    def __init__(self, name: Token, methods: list[Function]):
+        self.name = name
+        self.methods = methods
+
+    def accept(self, visitor: Visitor[T_co]) -> T_co:
+        return visitor.visit_class_stmt(self)
+
+
 class Expression:
     def __init__(self, expression: e.Expr):
         self.expression = expression
@@ -70,7 +82,9 @@ class Function:
 
 
 class If:
-    def __init__(self, condition: e.Expr, then_branch: Stmt, else_branch: Stmt | None):
+    def __init__(
+        self, condition: e.Expr, then_branch: Stmt, else_branch: Stmt | None
+    ):
         self.condition = condition
         self.then_branch = then_branch
         self.else_branch = else_branch

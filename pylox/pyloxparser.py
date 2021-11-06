@@ -37,7 +37,12 @@ class Parser:
 
     def _declaration(self) -> s.Stmt | None:
         try:
+            if self._match(TokenType.CLASS):
+                return self._class_declaration()
             if self._match(TokenType.FUN):
+                self._current = self._expect(
+                    TokenType.IDENTIFIER, "Expect function name"
+                )  # Consume fun keyword
                 return self._function("function")
             if self._match(TokenType.VAR):
                 return self._var_declaration()
@@ -48,10 +53,24 @@ class Parser:
             self._has_error = True
             return None
 
-    def _function(self, fun: str) -> s.Stmt:
+    def _class_declaration(self) -> s.Stmt:
+        self._current = self._expect(TokenType.IDENTIFIER, "Expect class name.")
+        name = self._current
         self._current = self._expect(
-            TokenType.IDENTIFIER, f"Expect {fun} name"
-        )  # Consume fun keyword
+            TokenType.LEFT_BRACE, "Expect '{' before class body."
+        )
+        self._current = self._try_get_next()
+        methods = []
+        while not self._match(TokenType.RIGHT_BRACE) and not self._is_at_end():
+            methods.append(self._function("method"))
+
+        if self._current.token_type is not TokenType.RIGHT_BRACE:
+            self._has_error = True
+            raise ParserError(self._current, "Expect '}' after class body.")
+        self._current = self._try_get_next()
+        return s.Class(name, methods)
+
+    def _function(self, fun: str) -> s.Stmt:
         name = self._current
         self._current = self._expect(
             TokenType.LEFT_PAREN, f"Expect '(' after {fun} name"
@@ -276,10 +295,13 @@ class Parser:
             equals = self._current
             self._current = self._try_get_next()
             value = self._assignment()
-            if type(expr) is e.Variable:
-                return e.Assign(expr.name, value)
-
-            report(asdict(equals), "Invalid assignement target.")
+            match expr:
+                case e.Variable():
+                    return e.Assign(expr.name, value)
+                case e.Get():
+                    return e.Set(expr.obj, expr.name, value)
+                case _:
+                    report(asdict(equals), "Invalid assignement target.")
 
         return expr
 
@@ -338,11 +360,16 @@ class Parser:
 
     def _call(self) -> e.Expr:
         expr = self._primary()
-
         while True:
             if self._match(TokenType.LEFT_PAREN):
                 self._current = self._try_get_next()
                 expr = self._finishCall(expr)
+            elif self._match(TokenType.DOT):
+                self._current = self._expect(
+                    TokenType.IDENTIFIER, "Expect property name after '.'."
+                )
+                expr = e.Get(expr, self._current)
+                self._current = self._try_get_next()
             else:
                 break
 
@@ -390,6 +417,10 @@ class Parser:
             )
         ) is not None:
             return literal
+
+        if self._match(TokenType.THIS):
+            var, self._current = self._current, self._try_get_next()
+            return e.This(var)
 
         if self._match(TokenType.IDENTIFIER):
             var = self._current

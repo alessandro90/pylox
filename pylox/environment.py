@@ -43,7 +43,7 @@ class Environment:
 
     def _ancestor(self, distance: int) -> Environment:
         environment = self
-        for i in range(distance):
+        for _ in range(distance):
             assert (
                 environment._enclosing is not None
             ), "Internal error: Invalid null scope."

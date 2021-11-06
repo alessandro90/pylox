@@ -32,7 +32,7 @@ class Lox:
         statements = Parser(tokens).parse()
         if statements is None:
             return 65
-        if len(statements) == 0:
+        if not statements:
             return 0
         if not Resolver(self._interpreter).resolve_statements(statements):
             return 65

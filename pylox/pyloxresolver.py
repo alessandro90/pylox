@@ -9,6 +9,13 @@ from enum import Enum, auto
 class FunctionType(Enum):
     NONE = auto()
     FUNCTION = auto()
+    INITIALIZER = auto()
+    METHOD = auto()
+
+
+class ClassType(Enum):
+    NONE = auto()
+    CLASS = auto()
 
 
 class Interpreter(Protocol):
@@ -22,26 +29,42 @@ class Resolver:
         self._interpreter = interpreter
         self._scopes: list[dict[str, bool]] = []
         self._current_function = FunctionType.NONE
+        self._current_class = ClassType.NONE
         self._has_error = False
 
     def resolve_statements(self, statements: list[s.Stmt]) -> bool:
         self._resolve(statements)
         return not self._has_error
 
-    def visit_block_stmt(self, stmt: s.Block):
+    def visit_block_stmt(self, stmt: s.Block) -> None:
         self._begin_scope()
         self._resolve(stmt.statements)
         self._end_scope()
 
-    def visit_var_stmt(self, stmt: s.Var):
+    def visit_class_stmt(self, stmt: s.Class) -> None:
+        enclosing_class = self._current_class
+        self._current_class = ClassType.CLASS
+        self._declare(stmt.name)
+        self._define(stmt.name)
+        self._begin_scope()
+        self._scopes[-1]["this"] = True
+        for method in stmt.methods:
+            if method.name.lexeme == "init":
+                declaration = FunctionType.INITIALIZER
+            else:
+                declaration = FunctionType.METHOD
+            self._resolve_function(method, declaration)
+        self._end_scope()
+        self._current_class = enclosing_class
+
+    def visit_var_stmt(self, stmt: s.Var) -> None:
         self._declare(stmt.name)
         if stmt.initializer is not None:
             self._resolve(stmt.initializer)
         self._define(stmt.name)
 
-    def visit_variable_expr(self, expr: e.Variable):
-        in_scope = self._scopes[-1].get(expr.name.lexeme)
-        if len(self._scopes) > 0 and in_scope is False:
+    def visit_variable_expr(self, expr: e.Variable) -> None:
+        if self._scopes and self._scopes[-1].get(expr.name.lexeme) is False:
             report(
                 {"Error at line": expr.name.line, "Token": expr.name.lexeme},
                 "Can't read local variable in its own initializer.",
@@ -49,76 +72,90 @@ class Resolver:
             self._has_error = True
         self._resolve_local(expr, expr.name)
 
-    def visit_assign_expr(self, expr: e.Assign):
+    def visit_assign_expr(self, expr: e.Assign) -> None:
         self._resolve(expr.value)
         self._resolve_local(expr, expr.name)
 
-    def visit_function_stmt(self, stmt: s.Function):
+    def visit_function_stmt(self, stmt: s.Function) -> None:
         self._declare(stmt.name)
         self._define(stmt.name)
         self._resolve_function(stmt, FunctionType.FUNCTION)
 
-    def visit_expression_stmt(self, stmt: s.Expression):
+    def visit_expression_stmt(self, stmt: s.Expression) -> None:
         self._resolve(stmt.expression)
 
-    def visit_if_stmt(self, stmt: s.If):
+    def visit_if_stmt(self, stmt: s.If) -> None:
         self._resolve(stmt.condition)
         self._resolve(stmt.then_branch)
         if stmt.else_branch is not None:
             self._resolve(stmt.else_branch)
 
-    def visit_print_stmt(self, stmt: s.Print):
+    def visit_print_stmt(self, stmt: s.Print) -> None:
         self._resolve(stmt.expression)
 
-    def visit_return_stmt(self, stmt: s.Return):
-        if self._current_function is FunctionType.NONE:
-            report(
-                {"Error:": stmt.keyword},
-                "Can't return from top-level code.",
-            )
-            self._has_error = True
-        if stmt.value is not None:
-            self._resolve(stmt.value)
+    def visit_return_stmt(self, stmt: s.Return) -> None:
+        def check_function_type(ftype: FunctionType, msg: str):
+            if self._current_function is ftype:
+                report({"Error:": stmt.keyword}, msg)
+                self._has_error = True
 
-    def visit_while_stmt(self, stmt: s.While):
+        check_function_type(
+            FunctionType.NONE, "Can't return from top-level code."
+        )
+        if stmt.value is None:
+            return None
+        check_function_type(
+            FunctionType.INITIALIZER,
+            "Can't return a value from an initalizer."
+        )
+        self._resolve(stmt.value)
+
+    def visit_while_stmt(self, stmt: s.While) -> None:
         self._resolve(stmt.condition)
         self._resolve(stmt.body)
 
-    def visit_binary_expr(self, expr: e.Binary):
+    def visit_binary_expr(self, expr: e.Binary) -> None:
         self._resolve(expr.left)
         self._resolve(expr.right)
 
-    def visit_call_expr(self, expr: e.Call):
+    def visit_call_expr(self, expr: e.Call) -> None:
         self._resolve(expr.callee)
         for argument in expr.arguments:
             self._resolve(argument)
 
-    def visit_grouping_expr(self, expr: e.Grouping):
+    def visit_grouping_expr(self, expr: e.Grouping) -> None:
         self._resolve(expr.expression)
 
-    def visit_literal_expr(self, expr: e.Literal):
+    def visit_literal_expr(self, expr: e.Literal) -> None:
         pass
 
-    def visit_logical_expr(self, expr: e.Logical):
+    def visit_logical_expr(self, expr: e.Logical) -> None:
         self._resolve(expr.left)
         self._resolve(expr.right)
 
-    def visit_unary_expr(self, expr: e.Unary):
+    def visit_unary_expr(self, expr: e.Unary) -> None:
         self._resolve(expr.right)
 
-    def visit_get_expr(self, expr: e.Get):
+    def visit_get_expr(self, expr: e.Get) -> None:
+        self._resolve(expr.obj)
+
+    def visit_set_expr(self, expr: e.Set) -> None:
+        self._resolve(expr.value)
+        self._resolve(expr.obj)
+
+    def visit_super_expr(self, expr: e.Super) -> None:
         pass
 
-    def visit_set_expr(self, expr: e.Set):
-        pass
+    def visit_this_expr(self, expr: e.This) -> None:
+        if self._current_class is not ClassType.CLASS:
+            report(
+                {"Error: ": expr.keyword},
+                "Cannot use 'this' outside of a class.",
+            )
+            self._has_error = True
+        self._resolve_local(expr, expr.keyword)
 
-    def visit_super_expr(self, expr: e.Super):
-        pass
-
-    def visit_this_expr(self, expr: e.This):
-        pass
-
-    def _resolve(self, statements: list[s.Stmt] | s.Stmt | e.Expr):
+    def _resolve(self, statements: list[s.Stmt] | s.Stmt | e.Expr) -> None:
         match statements:
             case [*stmts]:  # noqa(E211)
                 for statement in stmts:  # noqa(F821)
@@ -126,14 +163,14 @@ class Resolver:
             case s.Stmt() | e.Expr():
                 statements.accept(self)
 
-    def _begin_scope(self):
+    def _begin_scope(self) -> None:
         self._scopes.append({})
 
-    def _end_scope(self):
+    def _end_scope(self) -> None:
         self._scopes.pop()
 
-    def _declare(self, name: Token):
-        if len(self._scopes) == 0:
+    def _declare(self, name: Token) -> None:
+        if not self._scopes:
             return
         if name.lexeme in self._scopes[-1]:
             report(
@@ -143,12 +180,12 @@ class Resolver:
             self._has_error = True
         self._scopes[-1][name.lexeme] = False
 
-    def _define(self, name: Token):
-        if len(self._scopes) == 0:
+    def _define(self, name: Token) -> None:
+        if not self._scopes:
             return
         self._scopes[-1][name.lexeme] = True
 
-    def _resolve_local(self, expr: e.Expr, name: Token):
+    def _resolve_local(self, expr: e.Expr, name: Token) -> None:
         for i, scope in enumerate(reversed(self._scopes)):
             if scope.get(name.lexeme) is not None:
                 self._interpreter.resolve(expr, i)
@@ -156,7 +193,7 @@ class Resolver:
 
     def _resolve_function(
         self, function: s.Function, function_type: FunctionType
-    ):
+    ) -> None:
         enclosing_function = self._current_function
         self._current_function = function_type
         self._begin_scope()

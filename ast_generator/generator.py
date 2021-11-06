@@ -53,6 +53,7 @@ EXPRESSIONS = {
 STATEMENT_CLASS_NAME = "Stmt"
 STATEMENTS = {
     "block": {"statements": f"list[{STATEMENT_CLASS_NAME}]"},
+    "class": {"name": "Token", "methods": "list[Function]"},
     "expression": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "function": {
         "name": "Token",
@@ -152,12 +153,12 @@ def define_class(class_name: str, fields: dict[str, str], category: str) -> str:
     text = f"class {class_name.capitalize()}:\n"
     fields_list = list_fields(fields)
     init_paramaters = (
-        "self" if len(fields_list) == 0 else f"self, {list_fields(fields)}"
+        "self" if not fields_list else f"self, {list_fields(fields)}"
     )
     text += f"{indent()}def __init__({init_paramaters}):\n"
     for name in fields.keys():
         text += f"{indent(2)}self.{name} = {name}\n"
-    if len(fields.keys()) == 0:
+    if not fields.keys():
         text += f"{indent(2)}pass\n"
     text += "\n"
     text += (

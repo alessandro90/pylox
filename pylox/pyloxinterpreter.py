@@ -11,7 +11,7 @@ from exceptions import (
 )
 from utils.error_handler import report
 from environment import Environment
-from loxcallable import LoxCallable, LoxFunction
+from loxcallable import LoxCallable, LoxFunction, LoxClass, LoxInstance
 from native import Clock
 
 
@@ -99,6 +99,18 @@ class Interpreter:
 
     def visit_block_stmt(self, stmt: s.Block) -> None:
         self.execute_block(stmt.statements, Environment.nest(self._environemnt))
+        return None
+
+    def visit_class_stmt(self, stmt: s.Class) -> None:
+        self._environemnt.define(stmt.name.lexeme, None)
+        methods = {
+            (lexeme := method.name.lexeme): LoxFunction(method,
+                                                        self._environemnt,
+                                                        lexeme == "init")
+            for method in stmt.methods
+        }
+        klass = LoxClass(stmt.name.lexeme, methods)
+        self._environemnt.assign(stmt.name, klass)
         return None
 
     def visit_if_stmt(self, stmt: s.If) -> None:
@@ -209,7 +221,10 @@ class Interpreter:
         return callee.call(self, arguments)
 
     def visit_get_expr(self, expr: e.Get) -> Any:
-        ...
+        obj = self._evaluate(expr.obj)
+        if isinstance(obj, LoxInstance):
+            return obj.get(expr.name)
+        raise PyloxRuntimeError(expr.name, "Only instances have properties.")
 
     def visit_logical_expr(self, expr: e.Logical) -> Any:
         left = self._evaluate(expr.left)
@@ -223,29 +238,32 @@ class Interpreter:
         return self._evaluate(expr.right)
 
     def visit_set_expr(self, expr: e.Set) -> Any:
-        ...
+        obj = self._evaluate(expr.obj)
+        if type(obj) is not LoxInstance:
+            raise PyloxRuntimeError(expr.name, "Only instances have fields.")
+        value = self._evaluate(expr.value)
+        obj.set(expr.name, value)
+        return value
 
     def visit_super_expr(self, expr: e.Super) -> Any:
         ...
 
     def visit_this_expr(self, expr: e.This) -> Any:
-        ...
+        return self._look_up_variable(expr.keyword, expr)
 
     def visit_variable_expr(self, expr: e.Variable) -> Any:
         return self._look_up_variable(expr.name, expr)
 
-    def _look_up_variable(self, name: Token, expr: e.Variable):
+    def _look_up_variable(self, name: Token, expr: e.Variable | e.This):
         if (distance := self._locals.get(expr)) is not None:
             return self._environemnt.get_at(distance, name.lexeme)
         return self._globals.get(name)
 
     def visit_function_stmt(self, stmt: s.Function) -> None:
-        function = LoxFunction(stmt, self._environemnt)
+        function = LoxFunction(stmt, self._environemnt, False)
         self._environemnt.define(stmt.name.lexeme, function)
         return None
 
     def visit_return_stmt(self, stmt: s.Return) -> None:
-        value: Any | None = None
-        if stmt.value is not None:
-            value = self._evaluate(stmt.value)
+        value = self._evaluate(stmt.value) if stmt.value is not None else None
         raise Return(value)
