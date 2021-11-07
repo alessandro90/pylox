@@ -7,12 +7,12 @@ from exceptions import PyloxRuntimeError
 class Environment:
     def __init__(self):
         self._values: dict[str, Any] = {}
-        self._enclosing: Environment | None = None
+        self.enclosing: Environment | None = None
 
     @classmethod
     def nest(cls, enclosing: Environment) -> Environment:
         environemnt = Environment()
-        environemnt._enclosing = enclosing
+        environemnt.enclosing = enclosing
         return environemnt
 
     def define(self, name: str, value: Any):
@@ -21,8 +21,8 @@ class Environment:
     def get(self, name: Token) -> Any:
         if (value := self._values.get(name.lexeme)) is not None:
             return value
-        if self._enclosing is not None:
-            return self._enclosing.get(name)
+        if self.enclosing is not None:
+            return self.enclosing.get(name)
 
         raise PyloxRuntimeError(name, f'Undefined variable "{name.lexeme}"')
 
@@ -30,8 +30,8 @@ class Environment:
         if name.lexeme in self._values.keys():
             self._values[name.lexeme] = value
             return
-        if self._enclosing is not None:
-            self._enclosing.assign(name, value)
+        if self.enclosing is not None:
+            self.enclosing.assign(name, value)
             return
         raise PyloxRuntimeError(name, f'Undefined variable "{name.lexeme}"')
 
@@ -45,7 +45,7 @@ class Environment:
         environment = self
         for _ in range(distance):
             assert (
-                environment._enclosing is not None
+                environment.enclosing is not None
             ), "Internal error: Invalid null scope."
-            environment = environment._enclosing
+            environment = environment.enclosing
         return environment

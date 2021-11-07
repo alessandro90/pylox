@@ -102,14 +102,33 @@ class Interpreter:
         return None
 
     def visit_class_stmt(self, stmt: s.Class) -> None:
+        if stmt.superclass is not None:
+            superclass = self._evaluate(stmt.superclass)
+            if type(superclass) is not LoxClass:
+                raise PyloxRuntimeError(
+                    stmt.superclass.name, "Superclass must be a class"
+                )
+        else:
+            superclass = None
         self._environemnt.define(stmt.name.lexeme, None)
+
+        if stmt.superclass is not None:
+            self._environemnt = Environment.nest(self._environemnt)
+            self._environemnt.define("super", superclass)
+
         methods = {
             (lexeme := method.name.lexeme): LoxFunction(method,
                                                         self._environemnt,
                                                         lexeme == "init")
             for method in stmt.methods
         }
-        klass = LoxClass(stmt.name.lexeme, methods)
+        klass = LoxClass(stmt.name.lexeme, superclass, methods)
+
+        if superclass is not None:
+            assert self._environemnt.enclosing is not None, \
+                   "Error: enclosing environment must be not None."
+            self._environemnt = self._environemnt.enclosing
+
         self._environemnt.assign(stmt.name, klass)
         return None
 
@@ -210,13 +229,13 @@ class Interpreter:
         arguments = [self._evaluate(arg) for arg in expr.arguments]
         if not isinstance(callee, LoxCallable):
             raise PyloxRuntimeError(
-                expr.paren, "Can only call functions and classes."
+                expr.paren, "Can only call functions and classes"
             )
         if len(arguments) != callee.arity():
             raise PyloxRuntimeError(
                 expr.paren,
                 f"Expected {callee.arity()} arguments"
-                f"but got {len(arguments)} instead.",
+                f"but got {len(arguments)} instead",
             )
         return callee.call(self, arguments)
 
@@ -224,7 +243,7 @@ class Interpreter:
         obj = self._evaluate(expr.obj)
         if isinstance(obj, LoxInstance):
             return obj.get(expr.name)
-        raise PyloxRuntimeError(expr.name, "Only instances have properties.")
+        raise PyloxRuntimeError(expr.name, "Only instances have properties")
 
     def visit_logical_expr(self, expr: e.Logical) -> Any:
         left = self._evaluate(expr.left)
@@ -240,13 +259,25 @@ class Interpreter:
     def visit_set_expr(self, expr: e.Set) -> Any:
         obj = self._evaluate(expr.obj)
         if type(obj) is not LoxInstance:
-            raise PyloxRuntimeError(expr.name, "Only instances have fields.")
+            raise PyloxRuntimeError(expr.name, "Only instances have fields")
         value = self._evaluate(expr.value)
         obj.set(expr.name, value)
         return value
 
     def visit_super_expr(self, expr: e.Super) -> Any:
-        ...
+        distance = self._locals[expr]
+        superclass = self._environemnt.get_at(distance, "super")
+        assert isinstance(superclass, LoxClass), \
+               "Error: invalid superclass type."
+        assert distance > 0, "Error: invalid distance."
+        instance = self._environemnt.get_at(distance - 1, "this")
+        method = superclass.find_method(expr.method.lexeme)
+        if method is None:
+            raise PyloxRuntimeError(
+                expr.method,
+                f"Undefined property {expr.method.lexeme}."
+            )
+        return method.bind(instance)
 
     def visit_this_expr(self, expr: e.This) -> Any:
         return self._look_up_variable(expr.keyword, expr)

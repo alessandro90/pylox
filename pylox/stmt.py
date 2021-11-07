@@ -55,8 +55,9 @@ class Block:
 
 
 class Class:
-    def __init__(self, name: Token, methods: list[Function]):
+    def __init__(self, name: Token, superclass: e.Variable | None, methods: list[Function]):
         self.name = name
+        self.superclass = superclass
         self.methods = methods
 
     def accept(self, visitor: Visitor[T_co]) -> T_co:
@@ -82,9 +83,7 @@ class Function:
 
 
 class If:
-    def __init__(
-        self, condition: e.Expr, then_branch: Stmt, else_branch: Stmt | None
-    ):
+    def __init__(self, condition: e.Expr, then_branch: Stmt, else_branch: Stmt | None):
         self.condition = condition
         self.then_branch = then_branch
         self.else_branch = else_branch

@@ -7,11 +7,6 @@ from exceptions import InternalPyloxError, ParserError, ScannerError
 from utils.error_handler import report
 from dataclasses import asdict
 
-# TODO:
-# challenge 2. ch. 6 "Parsing Expressions" => implement '?:' operator
-# challenge 3. ch. 6 "Parsing Expressions" => error production for incomplete
-# binary operator
-
 
 class Parser:
     _MAX_PARAMS = 255
@@ -56,19 +51,45 @@ class Parser:
     def _class_declaration(self) -> s.Stmt:
         self._current = self._expect(TokenType.IDENTIFIER, "Expect class name.")
         name = self._current
-        self._current = self._expect(
-            TokenType.LEFT_BRACE, "Expect '{' before class body."
-        )
+
         self._current = self._try_get_next()
+        expect_brace = TokenType.LEFT_BRACE, "Expect '{' before class body."
+        if (self._match(TokenType.LESS)):
+            self._current = self._expect(
+                TokenType.IDENTIFIER,
+                "Expect superclass name."
+            )
+            superclass = e.Variable(self._current)
+            self._current = self._expect(*expect_brace)
+        else:
+            superclass = None
+            self._assert_token(self._current, *expect_brace)
+
+        self._current = self._try_get_next()
+
         methods = []
         while not self._match(TokenType.RIGHT_BRACE) and not self._is_at_end():
             methods.append(self._function("method"))
 
-        if self._current.token_type is not TokenType.RIGHT_BRACE:
-            self._has_error = True
-            raise ParserError(self._current, "Expect '}' after class body.")
+        self._assert_token(
+            self._current,
+            TokenType.RIGHT_BRACE,
+            "Expect '}' after class body."
+        )
         self._current = self._try_get_next()
-        return s.Class(name, methods)
+        return s.Class(name, superclass, methods)
+
+    def _assert_max_arity(
+        self,
+        parameters: list[Token] | list[e.Expr],
+        par_type: str
+    ) -> None:
+        if len(parameters) >= Parser._MAX_PARAMS:
+            self._has_error = True
+            report(
+                asdict(self._current),
+                f"Can't have more than {Parser._MAX_PARAMS} {par_type}."
+            )
 
     def _function(self, fun: str) -> s.Stmt:
         name = self._current
@@ -78,9 +99,11 @@ class Parser:
         self._current = self._try_get_next()
         parameters: list[Token] = []
         if not self._match(TokenType.RIGHT_PAREN):
-            if not self._match(TokenType.IDENTIFIER):
-                self._has_error = True
-                raise ParserError(self._current, "Expect parameter name.")
+            self._assert_token(
+                self._current,
+                TokenType.IDENTIFIER,
+                "Expect parameter name."
+            )
             parameters = [self._current]
             self._current = self._try_get_next()
             while self._match(TokenType.COMMA):
@@ -88,17 +111,14 @@ class Parser:
                     TokenType.IDENTIFIER, "Expect parameter name"
                 )
                 parameters.append(self._current)
-                if len(parameters) >= Parser._MAX_PARAMS:
-                    self._has_error = True
-                    report(
-                        asdict(self._current),
-                        f"Can't have more than {Parser._MAX_PARAMS} parameters",
-                    )
+                self._assert_max_arity(parameters, "paramters")
                 self._current = self._try_get_next()
 
-        if not self._match(TokenType.RIGHT_PAREN):
-            self._has_error = True
-            raise ParserError(self._current, "Expect ')' after parameters.")
+        self._assert_token(
+            self._current,
+            TokenType.RIGHT_PAREN,
+            "Expect ')' after parameters."
+        )
 
         self._current = self._expect(
             TokenType.LEFT_BRACE, f"Expect '{{' before {fun} body."
@@ -273,10 +293,15 @@ class Parser:
 
     def _expect(self, token_type: TokenType, msg: str) -> Token:
         tkn = self._try_get_next()
-        if tkn.token_type is not token_type:
-            self._has_error = True
-            raise ParserError(tkn, msg)
+        self._assert_token(tkn, token_type, msg)
         return tkn
+
+    def _assert_token(
+        self, token: Token, token_type: TokenType, msg: str
+    ) -> None:
+        if token.token_type is not token_type:
+            self._has_error = True
+            raise ParserError(token, msg)
 
     def _match(self, *token_types: TokenType) -> bool:
         return any(
@@ -379,12 +404,7 @@ class Parser:
         arguments: list[e.Expr] = []
         if not self._match(TokenType.RIGHT_PAREN):
             while True:
-                if len(arguments) >= Parser._MAX_PARAMS:
-                    self._has_error = True
-                    report(
-                        asdict(self._current),
-                        f"Can't have more than {Parser._MAX_PARAMS} arguments.",
-                    )
+                self._assert_max_arity(arguments, "arguments")
                 arguments.append(self._expression())
                 if self._match(TokenType.COMMA):
                     self._current = self._try_get_next()
@@ -417,6 +437,16 @@ class Parser:
             )
         ) is not None:
             return literal
+
+        if self._match(TokenType.SUPER):
+            keyword = self._current
+            self._current = self._expect(
+                TokenType.DOT,
+                "Expect '.' after super."
+            )
+            self._current = self._try_get_next()
+            method, self._current = self._current, self._try_get_next()
+            return e.Super(keyword, method)
 
         if self._match(TokenType.THIS):
             var, self._current = self._current, self._try_get_next()

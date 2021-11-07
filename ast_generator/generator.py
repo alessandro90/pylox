@@ -53,7 +53,11 @@ EXPRESSIONS = {
 STATEMENT_CLASS_NAME = "Stmt"
 STATEMENTS = {
     "block": {"statements": f"list[{STATEMENT_CLASS_NAME}]"},
-    "class": {"name": "Token", "methods": "list[Function]"},
+    "class": {
+        "name": "Token",
+        "superclass": "e.Variable | None",
+        "methods": "list[Function]",
+    },
     "expression": {"expression": f"{'e.'+EXPRESSION_CLASS_NAME}"},
     "function": {
         "name": "Token",

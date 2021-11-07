@@ -89,8 +89,14 @@ class LoxInstance:
 
 
 class LoxClass:
-    def __init__(self, name: str, methods: dict[str, LoxFunction]):
+    def __init__(
+        self,
+        name: str,
+        superclass: LoxClass | None,
+        methods: dict[str, LoxFunction],
+    ):
         self._name = name
+        self._superclass = superclass
         self._methods = methods
 
     def call(
@@ -103,7 +109,11 @@ class LoxClass:
         return instance
 
     def find_method(self, name: str) -> LoxFunction | None:
-        return self._methods.get(name)
+        if (method := self._methods.get(name)) is not None:
+            return method
+        if self._superclass is not None:
+            return self._superclass.find_method(name)
+        return None
 
     def arity(self) -> int:
         initializer = self.find_method("init")

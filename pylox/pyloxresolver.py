@@ -2,7 +2,7 @@ import stmt as s
 import expr as e
 from pyloxtoken import Token
 from utils.error_handler import report
-from typing import Protocol
+from typing import Protocol, Any
 from enum import Enum, auto
 
 
@@ -16,6 +16,7 @@ class FunctionType(Enum):
 class ClassType(Enum):
     NONE = auto()
     CLASS = auto()
+    SUBCLASS = auto()
 
 
 class Interpreter(Protocol):
@@ -43,9 +44,21 @@ class Resolver:
 
     def visit_class_stmt(self, stmt: s.Class) -> None:
         enclosing_class = self._current_class
-        self._current_class = ClassType.CLASS
         self._declare(stmt.name)
         self._define(stmt.name)
+        if stmt.superclass is not None:
+            if stmt.name.lexeme == stmt.superclass.name.lexeme:
+                self._report_error(
+                    {"Error": stmt.superclass.name},
+                    "A class cannot inherit from itself."
+                )
+            self._current_class = ClassType.SUBCLASS
+            self._resolve(stmt.superclass)
+            self._begin_scope()
+            self._scopes[-1]["super"] = True
+        else:
+            self._current_class = ClassType.CLASS
+
         self._begin_scope()
         self._scopes[-1]["this"] = True
         for method in stmt.methods:
@@ -55,6 +68,8 @@ class Resolver:
                 declaration = FunctionType.METHOD
             self._resolve_function(method, declaration)
         self._end_scope()
+        if stmt.superclass is not None:
+            self._end_scope()
         self._current_class = enclosing_class
 
     def visit_var_stmt(self, stmt: s.Var) -> None:
@@ -65,11 +80,10 @@ class Resolver:
 
     def visit_variable_expr(self, expr: e.Variable) -> None:
         if self._scopes and self._scopes[-1].get(expr.name.lexeme) is False:
-            report(
+            self._report_error(
                 {"Error at line": expr.name.line, "Token": expr.name.lexeme},
                 "Can't read local variable in its own initializer.",
             )
-            self._has_error = True
         self._resolve_local(expr, expr.name)
 
     def visit_assign_expr(self, expr: e.Assign) -> None:
@@ -96,8 +110,7 @@ class Resolver:
     def visit_return_stmt(self, stmt: s.Return) -> None:
         def check_function_type(ftype: FunctionType, msg: str):
             if self._current_function is ftype:
-                report({"Error:": stmt.keyword}, msg)
-                self._has_error = True
+                self._report_error({"Error:": stmt.keyword}, msg)
 
         check_function_type(
             FunctionType.NONE, "Can't return from top-level code."
@@ -144,16 +157,35 @@ class Resolver:
         self._resolve(expr.obj)
 
     def visit_super_expr(self, expr: e.Super) -> None:
-        pass
+        match self._current_class:
+            case ClassType.NONE:
+                self._report_error(
+                    {"Error": expr.keyword},
+                    "Cannot use 'super' outside of a class."
+                )
+            case ClassType.CLASS:
+                self._report_error(
+                    {"Error": expr.keyword},
+                    "Cannot use 'super' in class with no superclass."
+                )
+
+        self._resolve_local(expr, expr.keyword)
 
     def visit_this_expr(self, expr: e.This) -> None:
         if self._current_class is not ClassType.CLASS:
-            report(
+            self._report_error(
                 {"Error: ": expr.keyword},
                 "Cannot use 'this' outside of a class.",
             )
-            self._has_error = True
         self._resolve_local(expr, expr.keyword)
+
+    def _report_error(
+        self,
+        data: dict[Any, Any],
+        message: str | None = None
+    ) -> None:
+        self._has_error = True
+        report(data, message)
 
     def _resolve(self, statements: list[s.Stmt] | s.Stmt | e.Expr) -> None:
         match statements:
@@ -173,11 +205,10 @@ class Resolver:
         if not self._scopes:
             return
         if name.lexeme in self._scopes[-1]:
-            report(
+            self._report_error(
                 {"Error: ": name.lexeme},
                 "Already a variable with this name in this scope.",
             )
-            self._has_error = True
         self._scopes[-1][name.lexeme] = False
 
     def _define(self, name: Token) -> None:
