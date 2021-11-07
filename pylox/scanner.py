@@ -40,6 +40,7 @@ def _opt_map_or_false(val: T | None, cb: Callable[[T], bool]) -> bool:
     return cb(val)
 
 
+@dataclass(frozen=True)
 class NotFound:
     """A sentinel object to indicate something is not found."""
     pass
@@ -260,8 +261,8 @@ class Scanner:
         for finder in self._token_finders:
             token_match = finder(c, self._source)
             match token_match.result:
-                case Token() | None:
-                    return token_match.result
+                case (Token() | None) as result:  # noqa(E211)
+                    return result  # noqa(F821)
                 case ErrorData():
                     report(asdict(token_match.result))
                     raise ScannerError(token_match.result.message)

@@ -1,3 +1,4 @@
+from exceptions import ScannerError
 import scanner as s
 from source import Source
 from pyloxtoken import Token, TokenType
@@ -12,7 +13,7 @@ def a_source():
 
 def test_token_finder_single_char_not_found(a_source):
     find_dot = s.token_finder_single_char_factory(".", TokenType.DOT)
-    assert find_dot("-", a_source).result is s.NotFound
+    assert find_dot("-", a_source).result == s.TokenMatch.none().result
 
 
 def test_token_finder_single_char_found(a_source):
@@ -25,7 +26,9 @@ def test_token_finder_disambiguate_not_found(a_source):
         "=", "=", TokenType.EQUAL, TokenType.EQUAL_EQUAL
     )
 
-    assert find_eq_or_double_eq(".", a_source).result is s.NotFound
+    assert (
+        find_eq_or_double_eq(".", a_source).result == s.TokenMatch.none().result
+    )
 
 
 def test_token_finder_disambiguate_found_first():
@@ -53,7 +56,10 @@ def test_token_finder_disambiguate_found_second():
 
 
 def test_token_finder_slash_or_comment_not_found(a_source):
-    assert s.token_finder_slash_or_comment(".", a_source).result is s.NotFound
+    assert (
+        s.token_finder_slash_or_comment(".", a_source).result
+        == s.TokenMatch.none().result
+    )
 
 
 def test_token_finder_slash_or_comment_found_single_line():
@@ -87,7 +93,7 @@ def test_token_finder_slash_or_comment_found_multi_line_untermined():
 def test_token_finder_discard_not_found(a_source):
     assert (
         s.token_finder_discard_factory("x", "y", "z")("a", a_source).result
-        is s.NotFound
+        == s.TokenMatch.none().result
     )
 
 
@@ -100,7 +106,10 @@ def test_token_finder_discard_found():
 
 
 def test_token_finder_newline_not_found(a_source):
-    assert s.token_finder_newline("x", a_source).result is s.NotFound
+    assert (
+        s.token_finder_newline("x", a_source).result
+        == s.TokenMatch.none().result
+    )
 
 
 def test_token_finder_newline_found(a_source):
@@ -109,7 +118,10 @@ def test_token_finder_newline_found(a_source):
 
 
 def test_token_finder_string_not_found(a_source):
-    assert s.token_finder_string("x", a_source).result is s.NotFound
+    assert (
+        s.token_finder_string("x", a_source).result
+        == s.TokenMatch.none().result
+    )
 
 
 def test_token_finder_string_found():
@@ -139,8 +151,14 @@ def test_token_finder_multiline_untermined_string_found():
 
 
 def test_token_finder_find_number_not_found(a_source):
-    assert s.token_finder_number("a", a_source).result is s.NotFound
-    assert s.token_finder_number(".", a_source).result is s.NotFound
+    assert (
+        s.token_finder_number("a", a_source).result
+        == s.TokenMatch.none().result
+    )
+    assert (
+        s.token_finder_number(".", a_source).result
+        == s.TokenMatch.none().result
+    )
 
 
 def test_token_finder_find_number_integer_found():
@@ -165,7 +183,7 @@ def test_token_finder_keyword_or_identifier_not_found(a_source):
     for c in chars:
         assert (
             s.token_finder_keyword_or_identifier(c, a_source).result
-            is s.NotFound
+            == s.TokenMatch.none().result
         )
 
 
@@ -196,3 +214,39 @@ def test_token_finder_keyword_or_identifier_identifier_found():
         assert s.token_finder_keyword_or_identifier(
             c, source
         ).result == Token.make(source, TokenType.IDENTIFIER)
+
+
+def test_scanner_regular_source():
+    source = Source(". class () {;fun")
+    scanner = s.Scanner(source, s.TOKEN_FINDERS)
+    tokens = list(scanner.scan_tokens())
+    assert tokens[0] is not None and tokens[0].token_type == TokenType.DOT
+    assert tokens[1] is None
+    assert tokens[2] is not None and tokens[2].token_type is TokenType.CLASS
+    assert tokens[3] is None
+    assert (
+        tokens[4] is not None and tokens[4].token_type is TokenType.LEFT_PAREN
+    )
+    assert (
+        tokens[5] is not None and tokens[5].token_type is TokenType.RIGHT_PAREN
+    )
+    assert tokens[6] is None
+    assert (
+        tokens[7] is not None and tokens[7].token_type is TokenType.LEFT_BRACE
+    )
+    assert tokens[8] is not None and tokens[8].token_type is TokenType.SEMICOLON
+    assert tokens[9] is not None and tokens[9].token_type is TokenType.FUN
+
+
+def test_scanner_with_invalid_char():
+    source = Source(". 'class () {;fun")
+    scanner = s.Scanner(source, s.TOKEN_FINDERS)
+    tokens = scanner.scan_tokens()
+    next(tokens)
+    next(tokens)
+    try:
+        next(tokens)
+    except ScannerError:
+        assert True
+    else:
+        assert False
