@@ -9,7 +9,7 @@ from exceptions import (
     PyloxDivisionByZeroError,
     Return,
 )
-from utils.error_handler import report
+from error_handler import report
 from environment import Environment
 from loxcallable import LoxCallable, LoxFunction, LoxClass, LoxInstance
 from native import Clock

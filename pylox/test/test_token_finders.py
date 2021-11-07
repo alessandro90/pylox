@@ -2,7 +2,7 @@ import scanner as s
 from source import Source
 from pyloxtoken import Token, TokenType
 import pytest
-from utils.error_handler import ErrorData
+from error_handler import ErrorData
 
 
 @pytest.fixture

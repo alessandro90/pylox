@@ -1,8 +1,7 @@
 from __future__ import annotations  # NOTE: No need since python 3.11+
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator, TypeVar
 from dataclasses import dataclass, asdict
-from utils.error_handler import ErrorData, report
-from utils.functional import opt_map_or_false
+from error_handler import ErrorData, report
 from pyloxtoken import Token, TokenType
 from source import Source
 from exceptions import ScannerError
@@ -27,6 +26,18 @@ RESERVED_KEYWORDS = {
     "var": TokenType.VAR,
     "while": TokenType.WHILE,
 }
+
+# Generics types
+T = TypeVar("T")
+Q = TypeVar("Q")
+
+
+def _opt_map_or_false(val: T | None, cb: Callable[[T], bool]) -> bool:
+    """Apply the function cb to the value if value is not None.
+    Return False otherwise."""
+    if val is None:
+        return False
+    return cb(val)
 
 
 class NotFound:
@@ -86,7 +97,7 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
     if c != "/":
         return TokenMatch.none()
     if source.consume_next_if_is("/"):
-        while opt_map_or_false(source.peek(), lambda x: x != "\n"):
+        while _opt_map_or_false(source.peek(), lambda x: x != "\n"):
             source.advance()
         return TokenMatch.found()
     elif source.consume_next_if_is("*"):
@@ -98,7 +109,7 @@ def token_finder_slash_or_comment(c: str, source: Source) -> TokenMatch:
 
             if (char := source.advance()) == "\n":
                 source.newline()
-            elif char == "*" and opt_map_or_false(
+            elif char == "*" and _opt_map_or_false(
                 source.peek(), lambda x: x == "/"
             ):
                 source.advance()
@@ -114,7 +125,7 @@ def token_finder_discard_factory(
 
     def token_finder_discard(c: str, source: Source) -> TokenMatch:
         if should_discard(c):
-            while opt_map_or_false(source.peek(), should_discard):
+            while _opt_map_or_false(source.peek(), should_discard):
                 source.advance()
             return TokenMatch.found()
         return TokenMatch.none()
@@ -133,7 +144,7 @@ def token_finder_string(c: str, source: Source) -> TokenMatch:
     if c != '"':
         return TokenMatch.none()
 
-    while opt_map_or_false(char := source.peek(), lambda x: x != '"'):
+    while _opt_map_or_false(char := source.peek(), lambda x: x != '"'):
         if char == "\n":
             source.newline()
         source.advance()
@@ -154,15 +165,15 @@ def token_finder_number(c: str, source: Source) -> TokenMatch:
 
     is_digit = lambda char: char.isdigit()
 
-    while opt_map_or_false(source.peek(), is_digit):
+    while _opt_map_or_false(source.peek(), is_digit):
         source.advance()
 
-    if opt_map_or_false(
+    if _opt_map_or_false(
         source.peek(), lambda char: char == "."
-    ) and opt_map_or_false(source.peek(1), is_digit):
+    ) and _opt_map_or_false(source.peek(1), is_digit):
         source.advance()
 
-    while opt_map_or_false(source.peek(), is_digit):
+    while _opt_map_or_false(source.peek(), is_digit):
         source.advance()
 
     return TokenMatch.found(
@@ -179,7 +190,7 @@ def token_finder_keyword_or_identifier(c: str, source: Source) -> TokenMatch:
 
     if not is_alpha(c):
         return TokenMatch.none()
-    while opt_map_or_false(source.peek(), lambda x: is_alphanum(x)):
+    while _opt_map_or_false(source.peek(), lambda x: is_alphanum(x)):
         source.advance()
     if (keyword := RESERVED_KEYWORDS.get(source.lexeme())) is not None:
         return TokenMatch.found(Token.make(source, keyword))

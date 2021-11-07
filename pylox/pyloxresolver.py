@@ -1,7 +1,7 @@
 import stmt as s
 import expr as e
 from pyloxtoken import Token
-from utils.error_handler import report
+from error_handler import report
 from typing import Protocol, Any
 from enum import Enum, auto
 

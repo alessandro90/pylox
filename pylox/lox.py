@@ -1,6 +1,5 @@
 from scanner import Scanner, TOKEN_FINDERS
 from source import Source
-from utils.file_reader import read_as_string
 import sys
 from pyloxparser import Parser
 from pyloxinterpreter import Interpreter
@@ -11,12 +10,18 @@ from pyloxresolver import Resolver
 _EXIT_COMMAND = ["exit!", "quit!"]
 
 
+def _read_as_string(fname: str) -> str:
+    """Return file content as a single string"""
+    with open(fname, mode="r") as source:
+        return source.read()
+
+
 class Lox:
     def __init__(self):
         self._interpreter = Interpreter()
 
     def run_file(self, script: str) -> None:
-        if (exit_code := self._run(read_as_string(script))) != 0:
+        if (exit_code := self._run(_read_as_string(script))) != 0:
             sys.exit(exit_code)
 
     def run_prompt(self) -> None:

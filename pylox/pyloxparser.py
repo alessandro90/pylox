@@ -4,7 +4,7 @@ from pyloxtoken import Token, TokenType
 import expr as e
 import stmt as s
 from exceptions import InternalPyloxError, ParserError, ScannerError
-from utils.error_handler import report
+from error_handler import report
 from dataclasses import asdict
 
 
