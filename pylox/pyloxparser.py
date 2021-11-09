@@ -321,10 +321,10 @@ class Parser:
             self._current = self._try_get_next()
             value = self._assignment()
             match expr:
-                case e.Variable():
-                    return e.Assign(expr.name, value)
-                case e.Get():
-                    return e.Set(expr.obj, expr.name, value)
+                case e.Variable(name):
+                    return e.Assign(name, value)  # noqa(F821)
+                case e.Get(obj, name):
+                    return e.Set(obj, name, value)  # noqa(F821)
                 case _:
                     report(asdict(equals), "Invalid assignement target.")
 

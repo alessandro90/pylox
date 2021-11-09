@@ -263,9 +263,9 @@ class Scanner:
             match token_match.result:
                 case (Token() | None) as result:  # noqa(E211)
                     return result  # noqa(F821)
-                case ErrorData():
-                    report(asdict(token_match.result))
-                    raise ScannerError(token_match.result.message)
+                case ErrorData(_, _, message) as err_data:
+                    report(asdict(err_data))  # noqa(F821)
+                    raise ScannerError(message)  # noqa(F821)
                 case NotFound():
                     continue
         report(
