@@ -1,4 +1,4 @@
-from scanner import Scanner, TokenMatch
+from pyloxscanner import Scanner, TokenMatch
 from source import Source
 from pyloxtoken import Token, TokenType
 from error_handler import ErrorData

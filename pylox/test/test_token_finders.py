@@ -1,5 +1,5 @@
 from exceptions import ScannerError
-import scanner as s
+import pyloxscanner as s
 from source import Source
 from pyloxtoken import Token, TokenType
 import pytest

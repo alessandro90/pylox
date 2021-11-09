@@ -1,4 +1,4 @@
-from scanner import Scanner, TOKEN_FINDERS
+from pyloxscanner import Scanner, TOKEN_FINDERS
 from source import Source
 import sys
 from pyloxparser import Parser
